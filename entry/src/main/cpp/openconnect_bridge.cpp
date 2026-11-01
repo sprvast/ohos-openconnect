@@ -122,6 +122,16 @@ static int process_auth_form_cb(void *privdata, struct oc_auth_form *form)
         g_banner[sizeof(g_banner) - 1] = '\0';
         OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG,
                      "server banner: %{public}s", g_banner);
+        /* 同步写入 UI 可见日志缓冲，便于定位 Banner 是否真正拿到 */
+        pthread_mutex_lock(&g_log_lock);
+        size_t used_b = strnlen(g_log_buf, G_LOG_BUF_SIZE - 1);
+        const char *bline = "[banner] 服务器已下发 Banner";
+        if (used_b + strlen(bline) + 1 < G_LOG_BUF_SIZE) {
+            memcpy(g_log_buf + used_b, bline, strlen(bline));
+            g_log_buf[used_b + strlen(bline)] = '\n';
+            g_log_buf[used_b + strlen(bline) + 1] = '\0';
+        }
+        pthread_mutex_unlock(&g_log_lock);
     }
     /* 把表单信息写入日志缓冲，便于界面复制诊断 */
     char line[512];
@@ -282,6 +292,9 @@ napi_value InitSsl(napi_env env, napi_callback_info info)
 /* newSession(): number —— 创建会话，返回句柄(此处用 cmd_fd) */
 napi_value NewSession(napi_env env, napi_callback_info info)
 {
+    /* 每次新连接清空上次残留的 Banner，避免显示上一台服务器的旧公告 */
+    g_banner[0] = '\0';
+
     if (g_session) {
         openconnect_vpninfo_free(g_session->vpninfo);
         delete g_session;

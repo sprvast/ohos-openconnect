@@ -263,11 +263,12 @@ export default class VpnExtAbility extends VpnExtensionAbility {
       return;
     }
 
-    // 认证成功后，读取服务器下发的 Banner（AnyLink 认证 complete 的 <banner> 字段）
+    // 认证成功后，读取服务器下发的 Banner（AnyLink 认证 complete 的 <banner> 字段）。
+    // 服务器未下发时使用默认文案“您已接入公司网络”，始终弹窗提示并要求用户确认。
     const banner: string = OpenConnect.getBanner();
-    if (banner && banner.trim().length > 0) {
-      appendStatus('BANNER_START=' + banner.trim() + '=BANNER_END', gStatusPath);
-    }
+    const bannerText: string = (banner && banner.trim().length > 0)
+      ? banner.trim() : '您已接入公司网络，请注意信息安全。';
+    appendStatus('BANNER_START=' + bannerText + '=BANNER_END', gStatusPath);
 
     // 认证成功后，读取服务器下发的真实地址/路由/DNS，组建 VpnConfig
     const netJson: string = OpenConnect.getNetworkConfig();
