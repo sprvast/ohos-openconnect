@@ -71,3 +71,27 @@ file-list.txt
 /openconnect-installer*.exe
 /tap-windows*.exe
 /vpnc-script-win.js
+
+# autotools/libtool 与本机交叉编译产物
+/compile
+/config.h
+/config.h.in
+/stamp-h1
+/*.log
+/os-tcp-mtu
+/m4/libtool.m4
+/m4/ltoptions.m4
+/m4/ltsugar.m4
+/m4/ltversion.m4
+/m4/lt~obsolete.m4
+/json/.deps/
+/json/.dirstamp
+/json/*.lo
+/tests/.deps/
+/tests/bad_dtls_test
+/tests/buftest
+/tests/lzstest
+/tests/seqtest
+/tests/serverhash
+/tests/configs/
+/tests/softhsm2.conf

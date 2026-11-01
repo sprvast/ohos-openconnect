@@ -169,6 +169,8 @@ struct Index {
   private _connectStartTime: number = 0;
   /** 本次连接是否曾成功进入数据面（曾为 true，则后续中断视为网络/会话中断） */
   private _hadDataPlane: boolean = false;
+  /** 本次连接的会话令牌（UI 写入配置、扩展回写 SESSION_START，用于确认全新实例） */
+  private _sessionId: string = '';
 
   aboutToAppear(): void {
     try {
@@ -185,7 +187,7 @@ struct Index {
   /** 启动时恢复上次记住的连接信息：地址/用户名/用户组/密码（preferences 自动回填） */
   private async restoreLogin(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       // 历史服务器地址列表
       const savedHistory = await prefGetList(context, 'serverHistory');
       if (savedHistory.length > 0) {
@@ -217,7 +219,7 @@ struct Index {
   /** 连接成功后记住地址/用户名/用户组（密码不持久化，每次手动填写） */
   private async saveLogin(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       // 将当前地址加入历史列表并持久化（去重，最多保留 10 个）
       const next = pushServerHistory(this.serverHistory, this.serverUrl, 10);
       this.serverHistory = next;
@@ -235,7 +237,7 @@ struct Index {
   /** 记住用户选择的用户组，下次启动默认选中 */
   private async saveAuthGroup(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       await prefPut(context, 'authGroup', this.authGroup);
     } catch (e) {
       // 忽略保存失败
@@ -262,48 +264,67 @@ struct Index {
     this.sessionKicked = false;
     // 每次连接都重新允许 Banner 弹窗（而不是只在首次连接弹一次）
     this._bannerShown = false;
-    // 启动扩展前校验必填参数，避免缺失时扩展进程报“参数缺失”这种隐晦失败
-    if (!this.serverUrl || this.serverUrl.trim().length === 0) {
-      this.appendLog('请填写服务器地址');
-      return;
-    }
-    if (!this.username || this.username.trim().length === 0) {
-      this.appendLog('请填写用户名');
-      return;
-    }
-    if (!this.password || this.password.length === 0) {
-      this.appendLog('请填写密码');
-      return;
-    }
+    // 重置用户主动断开标志：否则断开后立即重连时，会话握手循环会因该标志为真被整个
+    // 跳过（不会重启扩展），监控读到的是上一次连接的残留状态，造成“假连接→假断开”。
+    this._disconnectRequested = false;
     this.isConnecting = true;
     // 兜底：若尚未拉取用户组则先自动获取
     if (this.groupOptions.length === 0) {
       await this.fetchServerGroups();
     }
-    this.appendLog('正在连接 ' + this.serverUrl + ' ...');
+    // —— 每次连接都从输入框/下拉的当前实时值快照本次连接参数，不使用历史恢复/缓存的旧值 ——
+    // 之后校验、写配置文件、传入 want 全部用这份快照，确保不会因后续异步流程被改写。
+    const sUrl = this.serverUrl;
+    const sUser = this.username;
+    const sPass = this.password;
+    const sGroup = this.authGroup;
+    // 启动扩展前校验必填参数，避免缺失时扩展进程报“参数缺失”这种隐晦失败
+    if (!sUrl || sUrl.trim().length === 0) {
+      this.appendLog('请填写服务器地址');
+      this.isConnecting = false;
+      return;
+    }
+    if (!sUser || sUser.trim().length === 0) {
+      this.appendLog('请填写用户名');
+      this.isConnecting = false;
+      return;
+    }
+    if (!sPass || sPass.length === 0) {
+      this.appendLog('请填写密码');
+      this.isConnecting = false;
+      return;
+    }
+    this.appendLog('正在连接 ' + sUrl + ' ...');
+    this.appendLog('本次连接使用：地址=' + sUrl + ' 用户=' + sUser + ' 组=' + (sGroup || '（未指定）')
+      + ' 密码长度=' + sPass.length);
 
     try {
       this.statusText = '连接中';
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       // 通过 want.parameters 把连接参数传入 Vpn 扩展进程
       const want: Want = {
         bundleName: context.abilityInfo.bundleName,
         abilityName: 'VpnExtAbility',
         parameters: {
-          'serverUrl': this.serverUrl,
-          'username': this.username,
-          'password': this.password,
-          'authGroup': this.authGroup
+          'serverUrl': sUrl,
+          'username': sUser,
+          'password': sPass,
+          'authGroup': sGroup
         }
       };
       // 连接参数经沙箱配置文件传给扩展进程（与状态文件 oc_vpn_status.txt 同目录同机制，跨进程可靠）。
       // UI 写、扩展读，扩展读取后立即删除该文件，密码不持久化。
+      // session 为本次连接的会话令牌：扩展 onCreate 读到后回写 SESSION_START=<id> 到状态文件，
+      // UI 据此验证扩展确实以全新实例、本次配置启动（防止复用旧实例导致地址/账号不切换）。
+      const sessionId = String(Date.now());
+      this._sessionId = sessionId;
       try {
         const cfgPath = context.filesDir + '/oc_vpn_cfg.txt';
-        const cfg = 'serverUrl=' + this.serverUrl + '\n' +
-          'username=' + this.username + '\n' +
-          'password=' + this.password + '\n' +
-          'authGroup=' + this.authGroup + '\n';
+        const cfg = 'session=' + sessionId + '\n' +
+          'serverUrl=' + sUrl + '\n' +
+          'username=' + sUser + '\n' +
+          'password=' + sPass + '\n' +
+          'authGroup=' + sGroup + '\n';
         // CREATE|TRUNC：文件不存在则创建，已存在则清空重写，一步完成旧值覆盖
         const file = fileIo.openSync(cfgPath,
           fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
@@ -313,23 +334,55 @@ struct Index {
       } catch (e) {
         this.appendLog('连接参数写入文件失败: ' + JSON.stringify(e));
       }
-      this.appendLog('启动 VPN 扩展（确保全新实例）...');
-      // 先停止可能残留的旧扩展实例，并等待其彻底销毁，再启动全新实例，确保 onCreate
-      // 用最新的服务器地址/账号/密码/用户组重新认证，避免系统复用旧实例导致“切了服务器
-      // 仍连到上一台/用旧密码”的问题。
-      try {
-        const stopWant: Want = { bundleName: context.abilityInfo.bundleName, abilityName: 'VpnExtAbility' };
-        await vpnExtension.stopVpnExtensionAbility(stopWant);
-      } catch (e) {
-        // 无残留实例时停止会抛错，忽略
+      this.appendLog('启动 VPN 扩展（会话握手确认全新实例）...');
+      // —— 会话握手：确认扩展为“读取了本次配置的全新实例”，防止复用旧实例导致地址/账号不切换 ——
+      // UI 把 session=id 写入配置文件，扩展 onCreate 读到后回写 SESSION_START=id。若在超时内
+      // 没看到本次 id 的回复，说明旧实例被系统复用（onCreate 未执行），需 stop 后重试。
+      const statusPath = context.filesDir + '/oc_vpn_status.txt';
+      const sessionMark = 'SESSION_START=' + this._sessionId;
+      let handshakeOk = false;
+      for (let attempt = 0; attempt < 4 && !handshakeOk && !this._disconnectRequested; attempt++) {
+        // 每次 start 前都先 stop，确保干净启动（避免残留旧实例被复用导致连到上一台服务器）
+        if (attempt > 0) {
+          this.appendLog('检测到扩展可能复用旧实例，重新 stop+start（第 ' + attempt + ' 次）...');
+        }
+        try {
+          const stopWant: Want = { bundleName: context.abilityInfo.bundleName, abilityName: 'VpnExtAbility' };
+          await vpnExtension.stopVpnExtensionAbility(stopWant);
+        } catch (e) {
+          // 无残留实例时停止会抛错，忽略
+        }
+        // 给系统留出回收旧实例的时间，降低复用概率
+        await new Promise<void>((res) => setTimeout(res, 400));
+        try {
+          await vpnExtension.startVpnExtensionAbility(want);
+        } catch (e) {
+          this.appendLog('启动 VPN 扩展失败: ' + JSON.stringify(e));
+          break;
+        }
+        // 等待本次会话令牌回写（首启冷启动+系统授权可能偏慢，放宽到 10s/次）
+        const hDeadline = Date.now() + 10000;
+        while (Date.now() < hDeadline) {
+          const c: string = await this.readStatusFile(statusPath);
+          if (c.includes(sessionMark)) {
+            handshakeOk = true;
+            this.appendLog('扩展已就绪（会话令牌已确认）');
+            break;
+          }
+          // 期间若出现“参数缺失”/连接失败标志，直接结束握手（交由下方监控处理）
+          if (c.includes('参数缺失')) {
+            break;
+          }
+          await new Promise<void>((res) => setTimeout(res, 250));
+        }
       }
-      // 给系统留出回收旧实例的时间，降低被复用的概率
-      await new Promise<void>((res) => setTimeout(res, 600));
-      await vpnExtension.startVpnExtensionAbility(want);
+      if (!handshakeOk) {
+        this.appendLog('扩展会话握手超时，可能在等待系统授权，继续等待连接结果...');
+      }
+      this._disconnectRequested = false;
 
       // 轮询扩展进程写入的沙箱状态文件：先等待连接成功；成功后持续监控数据面，
       // 任一阶段出现结束/失败标志、或心跳超时，都把 UI 刷新为“未连接”。
-      const statusPath = context.filesDir + '/oc_vpn_status.txt';
       const connectDeadline = Date.now() + 120000; // 连接阶段最长等 120s（含用户授权+认证+数据面建立）
       this._disconnectRequested = false;
       for (;;) {
@@ -345,6 +398,9 @@ struct Index {
         if (this.isConnected) {
           // 已进入数据面：实时刷新连接时长
           this.connectedDuration = this.formatDuration(Date.now() - this._connectStartTime);
+          // Banner 兜底轮询（幂等）：无论上一轮快照是否已含 BANNER_START，
+          // 进入数据面后持续尝试直至弹出，避免竞态导致公告永不显示
+          this.checkBanner(content);
           // 检测是否被服务器/网络断开或数据面结束
           if (content.includes('数据面主循环结束') || content.includes('VPN 已关闭')
             || content.includes('VPN 连接已结束')) {
@@ -384,7 +440,7 @@ struct Index {
             this.appendLog('VPN 已连接，数据面运行中');
             // 连接期间持有后台运行锁，防止误清后台/休眠中断
             await acquireRunningLock();
-            // 服务器如有下发 Banner，则弹窗展示并要求用户确认
+            // Banner 在连接计时开始（成功进入数据面）时提示，避免认证阶段过早弹出
             this.checkBanner(content);
             // 连接成功后记住服务器地址/用户名/用户组/密码，供下次自动回填
             this.saveLogin();
@@ -401,7 +457,12 @@ struct Index {
             this.isConnecting = false;
             this.statusText = '连接失败';
             const reason = this.classifyAuthError(content);
-            this.appendLog(reason.length > 0 ? reason : 'VPN 连接失败（详见上方日志）');
+            this.appendLog(reason.length > 0 ? reason : 'VPN 连接失败（认证未通过），请检查账号、密码、用户组及服务器地址');
+            // 服务器短时风控提示（不禁用按钮，仅引导等待，避免连续快速重试延长限制）
+            if (reason.indexOf('账号或密码') >= 0 || content.indexOf('用户名或密码错误') >= 0) {
+              this.appendLog('提示：如账号密码确认无误仍频繁失败，多为服务器暂时性限制，请等待 1~2 分钟后再试，不要连续快速重试。');
+            }
+            releaseRunningLock(); // 立即释放后台运行锁，停止后续动作
             break;
           } else if (Date.now() > connectDeadline) {
             this.isConnected = false;
@@ -424,7 +485,7 @@ struct Index {
     // 连接成功时保持扩展在后台运行数据面，不在此处停止。
     if (!this.isConnected) {
       try {
-        const stopCtx = getContext(this) as common.UIAbilityContext;
+        const stopCtx = this.getUIContext().getHostContext() as common.UIAbilityContext;
         const stopWant: Want = {
           bundleName: stopCtx.abilityInfo.bundleName,
           abilityName: 'VpnExtAbility'
@@ -606,7 +667,7 @@ struct Index {
     this.serverHistory = next;
     this.serverUrl = addr;
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       await prefPutList(context, 'serverHistory', next);
     } catch (e) {
       // 忽略
@@ -657,7 +718,7 @@ struct Index {
     this.sessionKicked = false;
     this.appendLog('正在断开，通知 VPN 扩展优雅退出...');
     try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       // 1) 写命令文件，触发扩展进程内 openconnect 发送 BYE(logout) 给服务器
       const cmdPath = context.filesDir + '/oc_vpn_cmd.txt';
       try {
@@ -815,7 +876,14 @@ struct Index {
       .backgroundColor('#f5f5f5')
       .borderRadius(8)
       .padding(8)
-      .margin({ top: 8, bottom: 24 })
+      .margin({ top: 8, bottom: 8 })
+      // 页面最底部展示 App 版本号（英文形式）
+      Text('Version 1.0.1')
+        .fontSize(12)
+        .fontColor('#999999')
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ bottom: 12 })
       }
       .width('100%')
       .height('100%')

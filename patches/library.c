@@ -1758,6 +1758,11 @@ const char *openconnect_get_cstp_cipher(struct openconnect_info *vpninfo)
 	return vpninfo->cstp_cipher;
 }
 
+const char *openconnect_get_banner(struct openconnect_info *vpninfo)
+{
+	return vpninfo->banner;
+}
+
 const char *openconnect_get_peer_cert_hash(struct openconnect_info *vpninfo)
 {
 	if (vpninfo->peer_cert_hash == NULL)

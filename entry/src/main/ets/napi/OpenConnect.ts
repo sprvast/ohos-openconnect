@@ -26,6 +26,7 @@ interface OpenConnectNative {
   freeSession(): void;
   getProgressLog(): string;
   getBanner(): string;
+  getCstpHeaders(): string;
 }
 
 // 声明原生 so 模块类型（CMake 产出 libopenconnect.so，由 NAPI nm_modname 注册）
@@ -61,6 +62,7 @@ export const OpenConnect: {
   freeSession(): void;
   getProgressLog(): string;
   getBanner(): string;
+  getCstpHeaders(): string;
 } = {
   // 初始化：主动调用 SSL 初始化，确保原生模块已加载
   initOpenConnect(): void {
@@ -119,5 +121,8 @@ export const OpenConnect: {
   },
   getBanner(): string {
     return getNative().getBanner();
+  },
+  getCstpHeaders(): string {
+    return getNative().getCstpHeaders();
   }
 };

@@ -44,8 +44,9 @@ static char g_auth_groups[16384] = {0};
  * 连接成功后由界面弹窗展示并要求用户确认。 */
 static char g_banner[8192] = {0};
 
-/* 最近一次连接过程的 openconnect 日志缓存（供 ArkTS 读取显示，便于定位） */
-#define G_LOG_BUF_SIZE 8192
+/* 最近一次连接过程的 openconnect 日志缓存（供 ArkTS 读取显示，便于定位）。
+ * 加大到 64KB：认证阶段（含 Banner/表单）行不会在后面海量 CSTP 头写入时被冲掉。 */
+#define G_LOG_BUF_SIZE 65536
 static char g_log_buf[G_LOG_BUF_SIZE] = {0};
 static pthread_mutex_t g_log_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -100,11 +101,53 @@ napi_value GetProgressLog(napi_env env, napi_callback_info info)
     return result;
 }
 
-/* getBanner(): string —— 返回服务器下发的 Banner（无可弹空串） */
+/* getBanner(): string —— 返回服务器下发的 Banner（无可弹空串）。
+ * 优先读取 openconnect 在认证 success 表单保存的 vpninfo->banner（实时服务器公告），
+ * 兜底用认证回调捕获的 g_banner；若两者皆空，再从 openconnect 日志中解析
+ * "OHOS auth success: banner=<...>" 作为最终兜底（服务器公告一定能取到）。 */
+static void extract_banner_from_log(void)
+{
+    pthread_mutex_lock(&g_log_lock);
+    const char *m = strstr(g_log_buf, "OHOS auth success: banner=<");
+    if (m) {
+        const char *start = m + sizeof("OHOS auth success: banner=<") - 1;
+        const char *end = strstr(start, ">");
+        if (end && start < end) {
+            size_t n = (size_t)(end - start);
+            if (n > 0 && n < sizeof(g_banner)) {
+                memcpy(g_banner, start, n);
+                g_banner[n] = '\0';
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_log_lock);
+}
+
 napi_value GetBanner(napi_env env, napi_callback_info info)
 {
+    const char *p = nullptr;
+    const char *src = "none";
+    if (g_session && g_session->vpninfo) {
+        p = openconnect_get_banner(g_session->vpninfo);
+        if (p && p[0])
+            src = "getter";
+    }
+    if (!p || !p[0]) {
+        p = g_banner;
+        if (p && p[0])
+            src = "g_banner";
+    }
+    if (!p || !p[0]) {
+        /* 最终兜底：从 openconnect 日志解析服务器公告（日志已确认含 banner=<...>） */
+        extract_banner_from_log();
+        p = g_banner;
+        if (p && p[0])
+            src = "log-parse";
+    }
+    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG,
+                 "banner src=%s len=%zu", src, p ? strnlen(p, 8000) : 0);
     napi_value result;
-    napi_create_string_utf8(env, g_banner, NAPI_AUTO_LENGTH, &result);
+    napi_create_string_utf8(env, p ? p : "", NAPI_AUTO_LENGTH, &result);
     return result;
 }
 
@@ -125,11 +168,12 @@ static int process_auth_form_cb(void *privdata, struct oc_auth_form *form)
         /* 同步写入 UI 可见日志缓冲，便于定位 Banner 是否真正拿到 */
         pthread_mutex_lock(&g_log_lock);
         size_t used_b = strnlen(g_log_buf, G_LOG_BUF_SIZE - 1);
-        const char *bline = "[banner] 服务器已下发 Banner";
-        if (used_b + strlen(bline) + 1 < G_LOG_BUF_SIZE) {
-            memcpy(g_log_buf + used_b, bline, strlen(bline));
-            g_log_buf[used_b + strlen(bline)] = '\n';
-            g_log_buf[used_b + strlen(bline) + 1] = '\0';
+        char bline[8200];
+        int bn = snprintf(bline, sizeof(bline), "[banner] value=%s", g_banner);
+        if (bn > 0 && used_b + (size_t)bn + 1 < G_LOG_BUF_SIZE) {
+            memcpy(g_log_buf + used_b, bline, (size_t)bn);
+            g_log_buf[used_b + (size_t)bn] = '\n';
+            g_log_buf[used_b + (size_t)bn + 1] = '\0';
         }
         pthread_mutex_unlock(&g_log_lock);
     }
@@ -152,6 +196,13 @@ static int process_auth_form_cb(void *privdata, struct oc_auth_form *form)
                  form->auth_id ? form->auth_id : "(null)",
                  form->message ? form->message : "(null)",
                  form->error ? form->error : "(null)");
+    /* 服务器已返回认证错误（如密码/用户组错误）：不再用同一凭证反复提交，立即终止，
+     * 避免单次连接里连续重试触发服务器风控（导致随后正确密码的连接也被拒绝）。 */
+    if (form->error && form->error[0]) {
+        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG,
+                     "OHOS auth rejected, stop: %{public}s", form->error);
+        return -1;
+    }
     for (struct oc_form_opt *opt = form->opts; opt; opt = opt->next) {
         OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG,
                      "auth opt name=%{public}s type=%d flags=0x%x user=%d pass=%d",
@@ -466,6 +517,49 @@ napi_value GetNetworkConfig(napi_env env, napi_callback_info info)
         return r;
     }
 
+    /* 从 CSTP 协商后返回的服务器头中捕获 Banner，并遍历打印所有可选键名，
+     * 便于定位 AnyLink 实际通过哪个头/键下发公告。
+     * 兼容常见键：X-CSTP-Banner / Banner / x-cstp-banner / banner。 */
+    char opt_names[1024];
+    size_t onames_off = 0;
+    opt_names[0] = '\0';
+    for (const struct oc_vpn_option *o = cstp; o; o = o->next) {
+        if (o->option) {
+            if (strcasecmp(o->option, "X-CSTP-Banner") == 0 ||
+                strcasecmp(o->option, "Banner") == 0 ||
+                strcasecmp(o->option, "banner") == 0) {
+                if (o->value && o->value[0]) {
+                    strncpy(g_banner, o->value, sizeof(g_banner) - 1);
+                    g_banner[sizeof(g_banner) - 1] = '\0';
+                    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG,
+                                 "cstp banner: %{public}s", g_banner);
+                }
+            }
+            int need = snprintf(opt_names + onames_off, sizeof(opt_names) - onames_off,
+                                "%s%s", onames_off ? "," : "", o->option);
+            if (need > 0)
+                onames_off += (size_t)need;
+            if (onames_off >= sizeof(opt_names) - 8)
+                break;
+        }
+    }
+    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "cstp-options: %s", opt_names);
+
+    /* 兼容键名命中后写入 g_banner；同时把 cstp 头名列表追加到 UI 可见日志缓冲，
+     * 便于直接从界面对齐 AnyLink 下发的真实头键（OH_LOG_Print 仅进系统 hidump）。 */
+    {
+        char hdr[1024];
+        snprintf(hdr, sizeof(hdr), "[cstp-options] %s", opt_names);
+        pthread_mutex_lock(&g_log_lock);
+        size_t used_h = strnlen(g_log_buf, G_LOG_BUF_SIZE - 1);
+        if (used_h + strlen(hdr) + 1 < G_LOG_BUF_SIZE) {
+            memcpy(g_log_buf + used_h, hdr, strlen(hdr));
+            g_log_buf[used_h + strlen(hdr)] = '\n';
+            g_log_buf[used_h + strlen(hdr) + 1] = '\0';
+        }
+        pthread_mutex_unlock(&g_log_lock);
+    }
+
     /* 拼接 JSON：{"addr":..,"prefix":..,"mtu":..,"dns":[...],"routes":[...]} */
     char buf[4096];
     size_t off = 0;
@@ -590,6 +684,38 @@ napi_value RequestStats(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
+/* getCstpHeaders(): string —— 返回本次 CSTP 协商服务器下发的全部头名（逗号分隔），
+ * 用于定位 Banner 实际所在键。 */
+napi_value GetCstpHeaders(napi_env env, napi_callback_info info)
+{
+    napi_value result;
+    if (!g_session) {
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+    const struct oc_ip_info *ip = nullptr;
+    const struct oc_vpn_option *cstp = nullptr;
+    const struct oc_vpn_option *dtls = nullptr;
+    if (openconnect_get_ip_info(g_session->vpninfo, &ip, &cstp, &dtls) < 0 || !ip) {
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+    char buf[1024];
+    size_t off = 0;
+    buf[0] = '\0';
+    for (const struct oc_vpn_option *o = cstp; o; o = o->next) {
+        if (!o->option)
+            continue;
+        int n = snprintf(buf + off, sizeof(buf) - off, "%s%s", off ? "," : "", o->option);
+        if (n > 0)
+            off += (size_t)n;
+        if (off >= sizeof(buf) - 8)
+            break;
+    }
+    napi_create_string_utf8(env, buf, NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
 /* freeSession() */
 napi_value FreeSession(napi_env env, napi_callback_info info)
 {
@@ -618,6 +744,7 @@ napi_value Init(napi_env env, napi_value exports)
         {"obtainCookie", nullptr, ObtainCookie, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"makeCstpConnection", nullptr, MakeCstpConnection, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getNetworkConfig", nullptr, GetNetworkConfig, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getCstpHeaders", nullptr, GetCstpHeaders, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"injectTunFd", nullptr, InjectTunFd, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setupDtls", nullptr, SetupDtls, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mainloop", nullptr, Mainloop, nullptr, nullptr, nullptr, napi_default, nullptr},

@@ -1504,11 +1504,7 @@ AC_SUBST(GITVERSIONDEPS)
 AC_SUBST(OCSERV_USER, $(whoami))
 AC_SUBST(OCSERV_GROUP, $(groups|cut -f 1 -d ' '))
 
-AC_CONFIG_FILES(Makefile openconnect.pc po/Makefile www/Makefile \
-		libopenconnect.map openconnect.8 www/styles/Makefile \
-		www/inc/Makefile www/images/Makefile tests/Makefile \
-		tests/softhsm2.conf tests/configs/test-user-cert.config \
-		tests/configs/test-user-pass.config)
+AC_CONFIG_FILES([Makefile openconnect.pc po/Makefile www/Makefile libopenconnect.map openconnect.8 www/styles/Makefile www/inc/Makefile www/images/Makefile tests/Makefile tests/softhsm2.conf tests/configs/test-user-cert.config tests/configs/test-user-pass.config])
 AC_OUTPUT
 
 AC_DEFUN([SUMMARY],

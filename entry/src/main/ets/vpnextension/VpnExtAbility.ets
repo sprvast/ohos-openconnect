@@ -38,6 +38,17 @@ const CMD_FILE_NAME = 'oc_vpn_cmd.txt';
 /** 主进程写入该内容表示“用户主动断开” */
 const CMD_USER_DISCONNECT = 'user_disconnect';
 
+/** openconnect 认证/协商失败返回码(负数) → 中文原因提示。未列入的码才回退显示原始错误码 */
+const AUTH_ERR_TEXT: Map<number, string> = new Map([
+  [-22, '用户名或密码错误'],
+  [-110, '连接服务器超时'],
+  [-101, '网络不可达'],
+  [-111, '服务器拒绝连接'],
+  [-113, '无法连接到服务器'],
+  [-104, '连接被服务器重置'],
+  [-100, '网络已断开'],
+]);
+
 /** 保存 VpnConnection 实例，供断开 destroy 恢复网络 */
 let gVpnConn: vpnExtension.VpnConnection | undefined = undefined;
 
@@ -169,6 +180,7 @@ export default class VpnExtAbility extends VpnExtensionAbility {
     let user = '';
     let pass = '';
     let group = '';
+    let session = '';
     const cfgPath = this.context.filesDir + '/oc_vpn_cfg.txt';
     try {
       const text = fileIo.readTextSync(cfgPath);
@@ -180,7 +192,9 @@ export default class VpnExtAbility extends VpnExtensionAbility {
         }
         const key = line.substring(0, idx).trim();
         const value = line.substring(idx + 1).trim();
-        if (key === 'serverUrl') {
+        if (key === 'session') {
+          session = value;
+        } else if (key === 'serverUrl') {
           url = value;
         } else if (key === 'username') {
           user = value;
@@ -192,6 +206,10 @@ export default class VpnExtAbility extends VpnExtensionAbility {
       }
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'read cfg failed: %{public}s', JSON.stringify(e));
+    }
+    // 回写会话令牌，供 UI 确认这是读取了本次配置的全新实例（防止复用旧实例导致地址不切换）
+    if (session) {
+      appendStatus('SESSION_START=' + session, gStatusPath);
     }
     // 密码仅本次连接使用，读取后立即删除配置文件，避免密码持久化在设备上
     try {
@@ -244,35 +262,28 @@ export default class VpnExtAbility extends VpnExtensionAbility {
     }
 
     if (authCode !== 0) {
-      appendStatus('认证/协商失败（code=' + authCode + '）', gStatusPath);
-      // 诊断：打印本次实际收到的参数与 openconnect 全部原始日志（不泄露密码原文），
-      // 用于区分“参数缺失/密码错误/组错误/SSL/服务器拒绝”等真实原因。
-      appendStatus('[diag] url=' + gConnUrl + ' user=' + gConnUser +
-        ' passLen=' + gConnPassLen + ' group=' + gConnGroup, gStatusPath);
-      const ocLogAll: string = OpenConnect.getProgressLog();
-      if (ocLogAll && ocLogAll.trim().length > 0) {
-        const lines = ocLogAll.trim().split('\n').filter((l) => l.trim().length > 0);
-        for (const ln of lines.slice(-30)) {
-          appendStatus('[oc] ' + ln, gStatusPath);
-        }
-      } else {
-        appendStatus('[diag] openconnect 未返回原始日志（认证在表单回调前即失败，见系统 hilog）', gStatusPath);
-      }
+      const reason: string | undefined = AUTH_ERR_TEXT.get(authCode);
+      // 有对应中文提示则显示文字，否则回退显示原始错误码
+      appendStatus(reason
+        ? '认证/协商失败（' + reason + '）'
+        : '认证/协商失败（code=' + authCode + '）', gStatusPath);
       appendStatus('关闭 VPN', gStatusPath);
       await this.destroyConn();
       return;
     }
 
-    // 认证成功后，读取服务器下发的 Banner（AnyLink 认证 complete 的 <banner> 字段）。
-    // 服务器未下发时使用默认文案“您已接入公司网络”，始终弹窗提示并要求用户确认。
-    const banner: string = OpenConnect.getBanner();
-    const bannerText: string = (banner && banner.trim().length > 0)
-      ? banner.trim() : '您已接入公司网络，请注意信息安全。';
-    appendStatus('BANNER_START=' + bannerText + '=BANNER_END', gStatusPath);
-
-    // 认证成功后，读取服务器下发的真实地址/路由/DNS，组建 VpnConfig
+    // 先取网络配置（getNetworkConfig 会发起/完成 CSTP 协商，并顺带捕获服务器
+    // 下发的 X-CSTP-Banner 头到 native g_banner），再读 Banner 保证拿到实时文案。
     const netJson: string = OpenConnect.getNetworkConfig();
     appendStatus('服务器网络配置: ' + netJson, gStatusPath);
+
+    // 读取服务器实时下发的 Banner（认证 success 响应 <banner> 提供）
+    const banner: string = OpenConnect.getBanner();
+    const bannerText: string = (banner && banner.trim().length > 0) ? banner.trim() : '';
+    // 服务器未下发公告时（空）不发标记，UI 侧不弹窗提示
+    if (bannerText.length > 0) {
+      appendStatus('BANNER_START=' + bannerText + '=BANNER_END', gStatusPath);
+    }
 
     // 阶段 B：本扩展进程创建 vNIC 拿 fd（需系统授权弹窗）
     const fd = await this.createVpnGetFd(netJson);

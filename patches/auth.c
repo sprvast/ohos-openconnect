@@ -720,8 +720,24 @@ static int handle_auth_form(struct openconnect_info *vpninfo, struct oc_auth_for
 		return -EPERM;
 	}
 
-	if (!strcmp(form->auth_id, "success"))
+	if (!strcmp(form->auth_id, "success")) {
+		/* 保存 success(complete) 表单下发的 Banner 到 vpninfo->banner，
+		 * 供应用通过 openconnect_get_banner() 读取实时公告。 */
+		if (form->banner && form->banner[0]) {
+			free((char *)vpninfo->banner);
+			vpninfo->banner = strdup(form->banner);
+			vpn_progress(vpninfo, PRG_INFO,
+			             _("OHOS auth success: banner=<%s>\n"), form->banner);
+		} else {
+			/* 诊断：AnyLink complete 应带 <banner>，若这里为空说明服务器未下发
+			 * （enable_banner / BannerEnable 未同时开启）或解析未取到。 */
+			vpn_progress(vpninfo, PRG_INFO,
+			             _("OHOS auth success: auth_id=%s banner=<NULL or empty> msg=%s\n"),
+			             form->auth_id ? form->auth_id : "(null)",
+			             form->message ? form->message : "(null)");
+		}
 		return OC_FORM_RESULT_LOGGEDIN;
+	}
 
 	if (vpninfo->nopasswd) {
 		vpn_progress(vpninfo, PRG_ERR,

@@ -25,3 +25,6 @@ oh_modules/
 
 # —— DevEco native 构建缓存（CMake/ninja 产物）——
 **/.cxx/
+
+# —— 备份/临时文件，不发布 ——
+*.bak-*
