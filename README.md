@@ -43,13 +43,6 @@ libopenconnect（控制面 TLS/HTTP/认证 + 数据面 CSTP/DTLS）
 
 > ⚠️ **当前仅适配 AnyLink 网关**（AnyLinkOpenSource）。仅支持 AnyLink 服务器，其他协议/厂商暂未适配
 
-#### 参与贡献
-
-1.  **Fork** 本仓库
-2.  新建 `Feat_xxx` 分支
-3.  提交代码
-4.  新建 Pull Request
-
 #### 开源协议
 
 本项目基于 **OpenConnect**（GPL-2.0-or-later）衍生开发，整体以 **GPL-2.0-or-later** 许可对外发布。
