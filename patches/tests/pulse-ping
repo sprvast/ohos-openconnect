@@ -1,0 +1,121 @@
+#!/bin/bash
+#
+# Copyright © 2026 Ben Walsh
+#
+# This file is part of openconnect.
+#
+# This is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public License
+# as published by the Free Software Foundation; either version 2.1 of
+# the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+srcdir=${srcdir:-.}
+top_builddir=${top_builddir:-..}
+
+mytmp=$(mktemp -d)
+
+SERV=${srcdir}/fake-pulse-server.py
+CLI_PIDFILE=oc-pid.$$.tmp
+
+. `dirname $0`/common.sh
+
+finish() {
+    echo " * Cleaning up..."
+    [ -n "${PID}" ] && kill ${PID} >/dev/null 2>&1
+    if [ -f "$CLI_PIDFILE" ]
+    then
+        kill $(cat "$CLI_PIDFILE") >/dev/null 2>&1
+        rm -f "$CLI_PIDFILE"
+    fi
+    rm -r $mytmp
+}
+
+start_client() {
+    echo "$password" \
+        | $CMDNS1 ${OPENCONNECT} --protocol=pulse $FINGERPRINT \
+                  --interface $TUNDEV \
+                  -u test --passwd-on-stdin -s ${srcdir}/scripts/vpnc-script \
+                  --pid-file=$CLI_PIDFILE -b \
+                  --dump-http-traffic -vv ${SERVURL}
+
+    sleep 5
+
+    $CMDNS1 ip route add $VPNADDR dev $TUNDEV
+}
+
+# server address
+ADDRESS=10.202.2.1
+CLI_ADDRESS=10.202.1.1
+VPNNET=192.168.3.0/24
+VPNADDR=192.168.3.1
+VPNNET6=fd91:6d87:8341:dc6a::/112
+VPNADDR6=fd91:6d87:8341:dc6a::1
+USERNAME=test
+TUNDEV=oc-$$-tun0
+
+. `dirname $0`/ns.sh
+
+set -eu
+
+FINGERPRINT="--servercert=pin-sha256:xp3scfzy3rO"
+CERT=$certdir/server-cert.pem
+KEY=$certdir/server-key.pem
+FAKE_TOKEN="--token-mode=totp --token-secret=ABCD"
+
+echo "Testing Pulse auth against fake server ..."
+
+$CMDNS2 $SERV $ADDRESS 443 $VPNNET $CERT $KEY & PID="$!"
+
+sleep 5
+
+SERVURL="https://$ADDRESS:443"
+
+do_test() {
+    conf="$1"
+    shift
+
+    echo " * Testing ping with config '${conf}'..."
+
+    $CMDNS1 curl -sk "$SERVURL/CONFIGURE" -d "$conf" >/dev/null
+
+    start_client
+
+    $CMDNS1 ping -c 1 $VPNADDR \
+        || fail "$PID" "Could not ping through tunnel"
+
+    echo ok
+
+    kill $(cat "$CLI_PIDFILE")
+
+    sleep 2
+
+    echo " * Checking status..."
+
+    $CMDNS1 curl -sk "$SERVURL/STATUS" | tr '&' '\n' >$mytmp/status.txt
+
+    for want_status in "$@"
+    do
+        grep "$want_status" $mytmp/status.txt \
+            || fail "$PID" "missing status '${want_status}'"
+    done
+}
+
+password='mypassword'
+
+do_test '' '^in_pass=mypassword$' '^ssl_ping=true$'
+do_test 'enable_udp=true' '^in_pass=mypassword$' '^udp_ping=true$'
+do_test 'pass_req_type=juniper2021' '^in_pass_juniper2021=mypassword$'
+
+password='longpassword34567890'
+
+do_test 'pass_req_type=juniper2021' '^in_pass_juniper2021=longpassword345678$'
+
+exit 0

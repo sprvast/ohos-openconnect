@@ -1,0 +1,10 @@
+{
+  "modelVersion": "5.0.0",
+  "name": "openconnect_vpn",
+  "version": "1.0.0",
+  "description": "OpenConnect VPN client for HarmonyOS NEXT (API 26 / HarmonyOS 6.0)",
+  "dependencies": {},
+  "devDependencies": {
+    "@ohos/hypium": "1.0.19"
+  }
+}

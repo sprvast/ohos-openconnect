@@ -1,0 +1,52 @@
+diff --git a/configure.ac b/configure.ac
+index 3fa8b98..0f48f5c 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -47,6 +47,13 @@ case $host_os in
+     have_vhost=yes
+     AC_MSG_NOTICE([Applying feature macros for GNU build])
+     AC_DEFINE(_GNU_SOURCE, 1, [_GNU_SOURCE])
++    case "$host_alias" in
++     *ohos*|*harmonyos*)
++        have_vhost=no
++        AC_MSG_NOTICE([Applying HarmonyOS-specific feature macros])
++        AC_DEFINE(__ohos__, 1, [Building for HarmonyOS])
++        ;;
++    esac
+     ;;
+  *netbsd*)
+     AC_MSG_NOTICE([Applying feature macros for NetBSD build])
+diff --git a/tun.c b/tun.c
+index 234f980..1564031 100644
+--- a/tun.c
++++ b/tun.c
+@@ -209,6 +209,21 @@ static int ifreq_set_ifname(struct openconnect_info *vpninfo, struct ifreq *ifr,
+ 
+ 
+ #ifdef IFF_TUN /* Linux */
++#ifdef __ohos__
++/* HarmonyOS NEXT runs apps in a restricted sandbox: /dev/net/tun and the
++ * TUNSETIFF ioctl are not available to third-party apps, and there is no
++ * root. The library must therefore NOT create the tunnel itself; the host
++ * (ArkTS + VpnManager) creates the tunnel and injects its fd via
++ * openconnect_setup_tun_fd(). Return an error here so code that falls back
++ * to os_setup_tun() fails loudly instead of half-initialising. */
++intptr_t os_setup_tun(struct openconnect_info *vpninfo)
++{
++	vpn_progress(vpninfo, PRG_ERR,
++		     _("TUN device creation is unsupported on HarmonyOS; "
++		       "inject a tunnel fd via openconnect_setup_tun_fd()\n"));
++	return -EOPNOTSUPP;
++}
++#else /* !__ohos__ */
+ intptr_t os_setup_tun(struct openconnect_info *vpninfo)
+ {
+ 	int tun_fd = -1;
+@@ -260,6 +275,7 @@ intptr_t os_setup_tun(struct openconnect_info *vpninfo)
+ 
+ 	return tun_fd;
+ }
++#endif /* __ohos__ */
+ #else /* BSD et al, including OS X */
+ 
+ #ifdef SIOCIFCREATE

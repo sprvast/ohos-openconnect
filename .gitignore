@@ -1,0 +1,27 @@
+node_modules/
+oh_modules/
+**/build/
+**/oh_modules/
+/.idea/
+**/.test/
+**/.preview/
+**/.preview/**
+**/.default/
+**/.default/**
+**/.git/
+**/build/
+/.hvigor/
+**/.hvigor/
+/.appanalyzer/
+/.clang-format
+/.clang-tidy
+/.clangd
+
+# —— 敏感/签名/密钥文件：不发布，避免泄露签名私钥与 AGC API 密钥 ——
+# 根 build-profile.json5 含真实 AGC 签名密钥，使用者需自行配置签名
+/build-profile.json5
+# agconnect-services.json 含 AGC client_secret / api_key，使用者需自行替换为自有 AGC 配置
+**/agconnect-services.json
+
+# —— DevEco native 构建缓存（CMake/ninja 产物）——
+**/.cxx/

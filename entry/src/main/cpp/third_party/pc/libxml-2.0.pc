@@ -1,0 +1,10 @@
+prefix=C:/DEP
+exec_prefix=${prefix}
+libdir=${exec_prefix}/aarch64-linux-ohos
+includedir=${prefix}/include
+
+Name: libXML
+Version: 2.12.9
+Description: libXML library version2.
+Libs: -L${libdir} -lxml2
+Cflags: -I${includedir}

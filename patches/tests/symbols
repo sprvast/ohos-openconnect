@@ -1,0 +1,100 @@
+#!/bin/sh
+#
+# Symbol version checking OpenConnect
+#
+# Copyright © David Woodhouse <dwmw2@infradead.org>
+#
+# Author: David Woodhouse <dwmw2@infradead.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public License
+# version 2.1, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+
+# Consider a command line like the following:
+#
+# openconnect -c --authenticate\ -k -k "'"'"'.pem --authgroup 'foo
+# bar' --o\s linux-64 myserver
+
+
+OPENCONNECT_H="${OPENCONNECT_H:-${top_srcdir}/openconnect.h}"
+MAPFILE="${MAPFILE:-${top_srcdir}/libopenconnect.map.in}"
+SEDFILE="${SEDFILE:-${top_srcdir}/gensymbols.sed}"
+SYMBOLSFILE="${SYMBOLESFILE:-${top_srcdir}/libopenconnect5.symbols}"
+
+
+TMPSYMBOLS=symbols.$$.tmp
+
+trap "rm -f ${TMPSYMBOLS}" EXIT
+
+( sed -Enf ${SEDFILE} ${OPENCONNECT_H} | \
+      sed -Enf- ${MAPFILE} | \
+      { IFS= read -r soname; printf '%s\n' "$soname"; LC_ALL=C sort; } ) > $TMPSYMBOLS
+
+SYMSBAD=no
+
+while read SYM OCVER; do
+    if ! grep -q "$SYM $OCVER" "$TMPSYMBOLS"; then
+	echo "Missing symbol ${SYM}"
+	SYMSBAD=yes
+    fi
+done < "$SYMBOLSFILE"
+
+while read SYM OCVER; do
+    if ! grep -q "$SYM $OCVER" "$SYMBOLSFILE"; then
+	echo "New symbol ${SYM}"
+	SYMSBAD=yes
+    fi
+done < "$TMPSYMBOLS"
+
+if [ "$SYMSBAD" = "yes" ]; then
+    echo "Symbols from *released* versions of OpenConnect have retrospectively changed!"
+    exit 1
+fi
+
+# Check that every version tag in libopenconnect.map.in has a corresponding
+# API version entry in openconnect.h (otherwise gensymbols.sed won't see it
+# and the symbols test above silently misses new symbols).
+# The current unreleased version (ending with ':' and no date) is exempt.
+UNRELEASED_VER="$(grep -oP 'API version (5[._]\S+):$' "$OPENCONNECT_H" | sed 's/API version //;s/:$//;s/\./_/' | head -1)"
+
+for VER in $(grep -oP '^OPENCONNECT_\S+' "$MAPFILE" | grep -v PRIVATE | sort -u); do
+    [ "$VER" = "OPENCONNECT_${UNRELEASED_VER}" ] && continue
+    VNUM=$(echo "$VER" | sed 's/OPENCONNECT_//;s/_/./')
+    if ! grep -q "API version $VNUM" "$OPENCONNECT_H"; then
+	echo "Version $VER in $MAPFILE has no 'API version $VNUM' entry in openconnect.h"
+	SYMSBAD=yes
+    fi
+done
+
+# Check that every symbol in libopenconnect.map.in (non-PRIVATE, non-unreleased)
+# is in the generated output.
+for SYM in $(sed '/OPENCONNECT_PRIVATE/,$d' "$MAPFILE" | \
+	     ${UNRELEASED_VER:+sed "/^OPENCONNECT_${UNRELEASED_VER}/,/^}/d"} | \
+	     grep -oP '^\topenconnect_\w+' | tr -d '\t;'); do
+    if ! grep -q " ${SYM}@" "$TMPSYMBOLS"; then
+	echo "Symbol $SYM in $MAPFILE not found in generated symbols"
+	SYMSBAD=yes
+    fi
+done
+
+if [ "$SYMSBAD" = "yes" ]; then
+    echo "Symbol version map is inconsistent with openconnect.h"
+    exit 1
+fi
+
+APIMAJOR="$(sed -n 's/^#define OPENCONNECT_API_VERSION_MAJOR \(.*\)/\1/p' ${OPENCONNECT_H})"
+APIMINOR="$(sed -n 's/^#define OPENCONNECT_API_VERSION_MINOR \(.*\)/\1/p' ${OPENCONNECT_H})"
+
+LASTVER="$(sed -En "/^ \* API version [0-9]+.[0-9]+.*/{p;q;}" ${OPENCONNECT_H})"
+if ! echo "$LASTVER" | grep -q "API version $APIMAJOR.$APIMINOR";  then
+   echo "API $APIMAJOR.$APIMINOR is not the latest?"
+   exit 1
+fi
+
+exit 0

@@ -1,0 +1,56 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "OpenConnect VPN 客户端"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "OpenConnect VPN 客户端"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "OpenConnect"
+    },
+    {
+      "name": "VpnExtAbility_desc",
+      "value": "OpenConnect VPN 隧道"
+    },
+    {
+      "name": "permission_internet",
+      "value": "用于建立VPN网络连接"
+    },
+    {
+      "name": "permission_network_info",
+      "value": "用于获取网络状态与统计信息"
+    },
+    {
+      "name": "permission_running_lock",
+      "value": "用于在 VPN 连接期间保持后台运行，防止系统休眠中断连接"
+    },
+    {
+      "name": "connect",
+      "value": "连接"
+    },
+    {
+      "name": "disconnect",
+      "value": "断开"
+    },
+    {
+      "name": "server_url",
+      "value": "服务器地址"
+    },
+    {
+      "name": "username",
+      "value": "用户名"
+    },
+    {
+      "name": "password",
+      "value": "密码"
+    },
+    {
+      "name": "status",
+      "value": "状态"
+    }
+  ]
+}

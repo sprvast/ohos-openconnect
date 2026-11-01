@@ -1,0 +1,10 @@
+prefix=C:/DEP
+exec_prefix=${prefix}
+libdir=${exec_prefix}/aarch64-linux-ohos
+includedir=${prefix}/include
+
+Name: OpenSSL
+Description: Secure Sockets Layer and cryptography libraries
+Version: 3.0.13
+Libs: -L${libdir} -lssl -lcrypto
+Cflags: -I${includedir}
