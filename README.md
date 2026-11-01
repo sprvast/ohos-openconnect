@@ -3,7 +3,7 @@
 基于开源项目 **OpenConnect**（GPL-2.0-or-later）移植到 **HarmonyOS NEXT** 的企业远程办公 **SSL VPN 客户端**。
 本项目沿用了 OpenConnect 的开放协议与代码实现，并针对鸿蒙沙箱、三方 VPN 能力做了平台适配。
 
-> ⚠️ **目前仅适配 AnyLink 网关**。项目以企业远程办公场景为目标，现阶段**只适配 AnyLink
+> ⚠️ **目前仅适配 AnyLink 网关**。项目以企业远程办公场景为目标。
 
 本项目为**开源学习与二次开发项目**，部分代码与协议实现**源自 OpenConnect 开源项目**
 （https://www.infradead.org/openconnect/ ，GPL-2.0-or-later）。若您认为本项目涉及任何版权或侵权问题，
@@ -59,12 +59,3 @@ OpenConnect 原始项目版权归其作者所有，请遵守相应的开源许�
 
 本项目代码与资源若引用了第三方受版权保护的内容，或您认为本项目侵犯了您的合法权益，
 请通过 Gitee Issues 与我们联系，我们将在核实后及时处理并删除相关内容。
-
-#### 特技
-
-1.  本开源项目使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md、Readme\_zh.md。
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars](https://gitee.com/gitee-stars)
