@@ -43,8 +43,7 @@ libopenconnect（控制面 TLS/HTTP/认证 + 数据面 CSTP/DTLS）
 3.  连接成功后应用会弹窗展示服务器下发的 Banner 提示；点击**断开** 可优雅退出并恢复系统网络。
 4.  密码仅本次连接使用，不会持久化保存在设备上。
 
-> ⚠️ **当前仅适配 AnyLink 网关**（AnyLinkOpenSource）。仅支持 AnyLink 服务器，其他协议/厂商暂未适配：
-> 请连接 AnyLink 网关使用，可自动拉取用户组、下发 Banner。
+> ⚠️ **当前仅适配 AnyLink 网关**（AnyLinkOpenSource）。仅支持 AnyLink 服务器，其他协议/厂商暂未适配
 
 #### 参与贡献
 
