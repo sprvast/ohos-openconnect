@@ -3,6 +3,10 @@
 基于开源项目 **OpenConnect**（GPL-2.0-or-later）移植到 **HarmonyOS NEXT** 的企业远程办公 **SSL VPN 客户端**。
 本项目沿用了 OpenConnect 的开放协议与代码实现，并针对鸿蒙沙箱、三方 VPN 能力做了平台适配。
 
+> ⚠️ **目前仅适配 AnyLink 网关**。项目以企业远程办公场景为目标，现阶段**只支持 AnyLink
+> （AnyLinkOpenSource）服务器**，尚未适配 OpenConnect 的其他协议/厂商（如 GlobalProtect、
+> Juniper、F5、Fortinet 等）。请在连接前确认你的服务器为 AnyLink 网关。
+
 本项目为**开源学习与二次开发项目**，部分代码与协议实现**源自 OpenConnect 开源项目**
 （https://www.infradead.org/openconnect/ ，GPL-2.0-or-later）。若您认为本项目涉及任何版权或侵权问题，
 请通过 Gitee Issues 或页面联系方式**联系我们，我们将在核实后第一时间删除相关资源**，感谢理解与支持。
@@ -39,7 +43,8 @@ libopenconnect（控制面 TLS/HTTP/认证 + 数据面 CSTP/DTLS）
 3.  连接成功后应用会弹窗展示服务器下发的 Banner 提示；点击**断开** 可优雅退出并恢复系统网络。
 4.  密码仅本次连接使用，不会持久化保存在设备上。
 
-> 目前主要适配 **AnyLink** 网关；可通过服务器自动拉取用户组、下发 Banner。
+> ⚠️ **当前仅适配 AnyLink 网关**（AnyLinkOpenSource）。仅支持 AnyLink 服务器，其他协议/厂商暂未适配：
+> 请连接 AnyLink 网关使用，可自动拉取用户组、下发 Banner。
 
 #### 参与贡献
 
