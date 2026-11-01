@@ -1,0 +1,30 @@
+# 统一换行符：源码与文本用 LF 入库（Git 存 LF，检出按平台转）
+# 避免每次提交都产生 LF<->CRLF 的 diff 噪音
+* text=auto
+
+# 鸿蒙原生 C/C++、ArkTS/ArkUI 源码统一使用 LF
+*.c      text eol=lf
+*.cc     text eol=lf
+*.cpp    text eol=lf
+*.h      text eol=lf
+*.hpp    text eol=lf
+*.ets    text eol=lf
+*.ts     text eol=lf
+*.json   text eol=lf
+*.json5  text eol=lf
+*.md     text eol=lf
+*.sh     text eol=lf
+*.cmake  text eol=lf
+CMakeLists.txt text eol=lf
+*.gradle text eol=lf
+
+# 二进制不转换
+*.a      binary
+*.so     binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.ico    binary
+*.p12    binary
+*.tar.gz binary
+*.gz     binary
