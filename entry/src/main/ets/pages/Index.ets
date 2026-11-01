@@ -260,6 +260,8 @@ struct Index {
     this._hadDataPlane = false;
     this.connectedDuration = '';
     this.sessionKicked = false;
+    // 每次连接都重新允许 Banner 弹窗（而不是只在首次连接弹一次）
+    this._bannerShown = false;
     // 启动扩展前校验必填参数，避免缺失时扩展进程报“参数缺失”这种隐晦失败
     if (!this.serverUrl || this.serverUrl.trim().length === 0) {
       this.appendLog('请填写服务器地址');
