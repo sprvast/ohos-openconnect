@@ -50,7 +50,139 @@
     },
     {
       "name": "status",
-      "value": "状态"
+      "value": "状态: "
+    },
+    {
+      "name": "choose_server",
+      "value": "选择服务器地址"
+    },
+    {
+      "name": "no_saved_server",
+      "value": "暂无已保存的服务器地址"
+    },
+    {
+      "name": "long_press_delete",
+      "value": "长按删除"
+    },
+    {
+      "name": "long_press_delete_hint",
+      "value": "长按地址可删除"
+    },
+    {
+      "name": "add_new_server",
+      "value": "+ 新增服务器地址"
+    },
+    {
+      "name": "add_server_title",
+      "value": "添加服务器地址"
+    },
+    {
+      "name": "new_server_placeholder",
+      "value": "输入新的服务器地址 (https://vpn.example.com)"
+    },
+    {
+      "name": "confirm_btn",
+      "value": "确定"
+    },
+    {
+      "name": "group",
+      "value": "用户组"
+    },
+    {
+      "name": "no_group_hint",
+      "value": "（输入服务器地址后自动获取用户组）"
+    },
+    {
+      "name": "copy_logs",
+      "value": "复制日志"
+    },
+    {
+      "name": "about_title",
+      "value": "关于 OpenConnect"
+    },
+    {
+      "name": "server_announce",
+      "value": "服务器公告"
+    },
+    {
+      "name": "delete_server_title",
+      "value": "删除服务器地址"
+    },
+    {
+      "name": "delete_server_msg",
+      "value": "确定删除该服务器地址？"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "delete",
+      "value": "删除"
+    },
+    {
+      "name": "got_it",
+      "value": "我知道了"
+    },
+    {
+      "name": "app_title",
+      "value": "OpenConnect VPN"
+    },
+    {
+      "name": "about_app_desc",
+      "value": "HarmonyOS 安全远程接入客户端"
+    },
+    {
+      "name": "about_apply_info",
+      "value": "应用信息"
+    },
+    {
+      "name": "about_version",
+      "value": "版本"
+    },
+    {
+      "name": "about_based_on",
+      "value": "基于开发"
+    },
+    {
+      "name": "about_backend",
+      "value": "兼容协议"
+    },
+    {
+      "name": "about_opensource",
+      "value": "开源与许可"
+    },
+    {
+      "name": "about_privacy",
+      "value": "隐私说明"
+    },
+    {
+      "name": "about_privacy_body",
+      "value": "为提供远程接入服务，本应用会获取并使用：\n· 服务器地址与连接信息；\n· 登录账号（用户名、密码、用户组）；\n· 设备信息（设备型号、操作系统版本、设备标识）；\n· 建立 VPN 隧道所需的网络访问权限。\n密码仅本次连接使用，不持久化保存；连接日志仅保存在本机，用于问题排查。"
+    },
+    {
+      "name": "st_not_connected",
+      "value": "未连接"
+    },
+    {
+      "name": "st_connecting",
+      "value": "连接中"
+    },
+    {
+      "name": "st_connected",
+      "value": "已连接"
+    },
+    {
+      "name": "st_connect_fail",
+      "value": "连接失败"
+    },
+    {
+      "name": "st_disconnected",
+      "value": "已断开"
+    },
+    {
+      "name": "st_kicked",
+      "value": "已断开（会话被服务器终止）"
     }
   ]
 }

@@ -22,6 +22,258 @@ import { runningLock } from '@kit.BasicServicesKit';
 import { preferences } from '@kit.ArkData';
 import { promptAction } from '@kit.ArkUI';
 
+/** “关于 OpenConnect”弹窗：仿设置页排版展示应用信息、开源/许可与隐私说明 */
+@CustomDialog
+struct AboutDialog {
+  controller?: CustomDialogController;
+
+  private res(id: Resource): string {
+    const ctx = this.getUIContext().getHostContext() as common.Context;
+    return ctx.resourceManager.getStringSync(id);
+  }
+
+  build() {
+    Column() {
+      // 应用概览
+      Column() {
+        Text(this.res($r('app.string.app_title')))
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_title'))
+        Text(this.res($r('app.string.about_app_desc')))
+          .fontSize(13)
+          .fontColor($r('app.color.text_secondary'))
+          .margin({ top: 6 })
+      }
+      .width('100%')
+      .alignItems(HorizontalAlign.Center)
+      .padding({ top: 24, bottom: 18 })
+
+      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+
+      this.sectionTitle(this.res($r('app.string.about_apply_info')))
+      this.aboutRow(this.res($r('app.string.about_version')), '1.0.2')
+      this.aboutRow(this.res($r('app.string.about_based_on')), 'OpenConnect v9.21')
+      this.aboutRow(this.res($r('app.string.about_backend')), 'OpenConnect / AnyConnect')
+
+      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+
+      this.sectionTitle(this.res($r('app.string.about_opensource')))
+      this.aboutRow('ohos-openconnect', 'GPL-2.0-or-later')
+      this.aboutRow('OpenConnect', 'LGPL-2.1-only')
+
+      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+
+      this.sectionTitle(this.res($r('app.string.about_privacy')))
+      Text(this.res($r('app.string.about_privacy_body')))
+        .fontSize(12)
+        .fontColor($r('app.color.text_gray8'))
+        .width('100%')
+        .padding({ left: 2, bottom: 14 })
+        .textAlign(TextAlign.Start)
+
+      Button(this.res($r('app.string.got_it')))
+        .fontSize(14)
+        .height(40)
+        .width('100%')
+        .margin({ top: 4, bottom: 16 })
+        .onClick(() => {
+          this.controller?.close();
+        })
+    }
+    .padding({ left: 16, right: 16 })
+  }
+
+  @Builder
+  sectionTitle(title: string) {
+    Text(title)
+      .fontSize(13)
+      .fontColor($r('app.color.section'))
+      .width('100%')
+      .textAlign(TextAlign.Start)
+      .padding({ left: 2, top: 12, bottom: 2 })
+  }
+
+  @Builder
+  aboutRow(label: string, value: string) {
+    Row() {
+      Text(label)
+        .fontSize(14)
+        .fontColor($r('app.color.text_primary'))
+        .layoutWeight(1)
+      Text(value)
+        .fontSize(14)
+        .fontColor($r('app.color.text_hint'))
+    }
+    .width('100%')
+    .height(40)
+    .padding({ left: 2, right: 2 })
+  }
+}
+
+/** “添加服务器地址”弹窗：输入并保存新地址 */
+@CustomDialog
+struct AddServerDialog {
+  controller?: CustomDialogController;
+  onConfirm?: (addr: string) => void;
+
+  @State input: string = '';
+
+  private res(id: Resource): string {
+    const ctx = this.getUIContext().getHostContext() as common.Context;
+    return ctx.resourceManager.getStringSync(id);
+  }
+
+  build() {
+    Column() {
+      Text(this.res($r('app.string.add_server_title')))
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_title'))
+        .margin({ top: 20, bottom: 12 })
+      TextInput({ placeholder: this.res($r('app.string.new_server_placeholder')), text: this.input })
+        .width('100%')
+        .height(44)
+        .fontSize(14)
+        .onChange((v: string) => this.input = v)
+        .onSubmit(() => {
+          this.onConfirm?.(this.input);
+          this.controller?.close();
+        })
+      Row({ space: 12 }) {
+        Button(this.res($r('app.string.cancel')))
+          .fontSize(14)
+          .height(40)
+          .layoutWeight(1)
+          .backgroundColor('#cccccc')
+          .onClick(() => this.controller?.close())
+        Button(this.res($r('app.string.confirm_btn')))
+          .fontSize(14)
+          .height(40)
+          .layoutWeight(1)
+          .onClick(() => {
+            this.onConfirm?.(this.input);
+            this.controller?.close();
+          })
+      }
+      .width('100%')
+      .margin({ top: 16, bottom: 8 })
+    }
+    .padding({ left: 16, right: 16 })
+  }
+}
+
+/** “选择服务器地址”弹窗：历史地址列表（可滑动），点击选择、长按删除，末尾添加 */
+@CustomDialog
+struct ServerSelectDialog {
+  controller?: CustomDialogController;
+  items: string[] = [];
+  current: string = '';
+  onSelect?: (addr: string) => void;
+  onDelete?: (addr: string) => void;
+  onAdd?: () => void;
+
+  @State localItems: string[] = [];
+  @State localCurrent: string = '';
+
+  private res(id: Resource): string {
+    const ctx = this.getUIContext().getHostContext() as common.Context;
+    return ctx.resourceManager.getStringSync(id);
+  }
+
+  aboutToAppear(): void {
+    this.localItems = this.items.slice();
+    this.localCurrent = this.current;
+  }
+
+  private confirmDelete(addr: string): void {
+    promptAction.showDialog({
+      title: this.res($r('app.string.delete_server_title')),
+      message: this.res($r('app.string.delete_server_msg')) + '\n' + addr,
+      buttons: [
+        { text: this.res($r('app.string.cancel')), color: '#666666' },
+        { text: this.res($r('app.string.delete')), color: '#cf1322' }
+      ]
+    }).then((res) => {
+      if (res.index === 1) {
+        this.localItems = this.localItems.filter((x) => x !== addr);
+        this.onDelete?.(addr);
+      }
+    }).catch(() => {
+    });
+  }
+
+  build() {
+    Column() {
+      Text(this.res($r('app.string.choose_server')))
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_title'))
+        .margin({ top: 20, bottom: 8 })
+
+      if (this.localItems.length === 0) {
+        Text(this.res($r('app.string.no_saved_server')))
+          .fontSize(14)
+          .fontColor($r('app.color.text_hint'))
+          .height(120)
+      } else {
+        List() {
+          ForEach(this.localItems, (addr: string) => {
+            ListItem() {
+              Row({ space: 8 }) {
+                Text(addr)
+                  .fontSize(14)
+                  .layoutWeight(1)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                if (addr === this.localCurrent) {
+                  Text('✓').fontSize(14).fontColor($r('app.color.text_link'))
+                }
+                Text(this.res($r('app.string.long_press_delete')))
+                  .fontSize(11)
+                  .fontColor($r('app.color.text_hint'))
+              }
+              .width('100%')
+              .height(48)
+              .padding({ left: 4, right: 4 })
+              .onClick(() => {
+                this.onSelect?.(addr);
+                this.controller?.close();
+              })
+              .gesture(
+                LongPressGesture().onAction(() => this.confirmDelete(addr))
+              )
+            }
+          }, (addr: string) => addr)
+        }
+        .height(220)
+        .scrollBar(BarState.Auto)
+        .edgeEffect(EdgeEffect.Spring)
+      }
+
+      Divider().color($r('app.color.divider_light')).strokeWidth(0.5).margin({ top: 4 })
+
+      Button(this.res($r('app.string.add_new_server')))
+        .fontSize(14)
+        .height(40)
+        .width('100%')
+        .margin({ top: 8, bottom: 6 })
+        .onClick(() => {
+          this.controller?.close();
+          this.onAdd?.();
+        })
+
+      Text(this.res($r('app.string.long_press_delete_hint')))
+        .fontSize(11)
+        .fontColor($r('app.color.text_hint'))
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ bottom: 12 })
+    }
+    .padding({ left: 16, right: 16 })
+  }
+}
+
 /** 后台探测服务器可选用户组：发起一次认证，回调收集 group 列表后返回（忽略最终结果） */
 @Concurrent
 function ocProbeGroups(url: string): string {
@@ -164,6 +416,18 @@ struct Index {
   @State connectedDuration: string = '';
   /** 当前是否处于"已断开（被服务器终止会话）"状态，用于状态文本展示 */
   @State sessionKicked: boolean = false;
+  /** 服务器地址下拉是否展开（自绘下拉，长按单个地址可删除） */
+  @State serverDropdownOpen: boolean = false;
+  /** “关于 OpenConnect”弹窗控制器 */
+  private aboutCtrl: CustomDialogController = new CustomDialogController({
+    builder: AboutDialog(),
+    autoCancel: true,
+    alignment: DialogAlignment.Center
+  });
+  /** “添加服务器地址”弹窗控制器（选末尾“添加”项时创建并打开） */
+  private addCtrl?: CustomDialogController;
+  /** “选择服务器地址”弹窗控制器 */
+  private selCtrl?: CustomDialogController;
 
   /** 连接建立成功的时间戳（毫秒），用于计算并显示连接时长 */
   private _connectStartTime: number = 0;
@@ -242,6 +506,124 @@ struct Index {
     } catch (e) {
       // 忽略保存失败
     }
+  }
+
+  /** 弹出“关于 OpenConnect”弹窗（仿设置页排版：应用信息/开源许可/隐私说明） */
+  private showAboutDialog(): void {
+    this.aboutCtrl.open();
+  }
+
+  /** 服务器下拉选项：已保存历史地址 + 末尾“+ 添加服务器地址” */
+  private serverSelectOptions(): Array<SelectOption> {
+    const opts: Array<SelectOption> = [];
+    for (const a of this.serverHistory) {
+      opts.push({ value: a });
+    }
+    opts.push({ value: this.res($r('app.string.add_new_server')) });
+    return opts;
+  }
+
+  /** 下拉选择：选历史地址回填并拉用户组；选末尾“添加”项弹出新增弹窗 */
+  private onServerSelect(index: number): void {
+    if (index >= 0 && index < this.serverHistory.length) {
+      this.useServerHistory(this.serverHistory[index]);
+    } else if (index >= 0 && index === this.serverHistory.length) {
+      this.openAddServerDialog();
+    }
+  }
+
+  /** 打开“选择服务器地址”弹窗（历史地址列表，可滑动选择/删除） */
+  private openServerSelectDialog(): void {
+    this.selCtrl = new CustomDialogController({
+      builder: ServerSelectDialog({
+        items: this.serverHistory.slice(),
+        current: this.serverUrl,
+        onSelect: (addr: string) => this.useServerHistory(addr),
+        onDelete: (addr: string) => this.deleteServer(addr),
+        onAdd: () => this.openAddServerDialog()
+      }),
+      autoCancel: true
+    });
+    this.selCtrl.open();
+  }
+
+  /** 打开“添加服务器地址”弹窗 */
+  private openAddServerDialog(): void {
+    this.addCtrl = new CustomDialogController({
+      builder: AddServerDialog({ onConfirm: (addr: string) => this.addServerConfirmed(addr) }),
+      autoCancel: true
+    });
+    this.addCtrl.open();
+  }
+
+  /** 弹窗确认新增：去空、去重、置顶保存并持久化，回填并拉取用户组 */
+  private addServerConfirmed(addrRaw: string): void {
+    const addr = addrRaw.trim();
+    if (!addr) {
+      return;
+    }
+    const next = pushServerHistory(this.serverHistory, addr, 10);
+    this.serverHistory = next;
+    this.serverUrl = addr;
+    try {
+      const context = this.getUIContext().getHostContext() as common.Context;
+      prefPutList(context, 'serverHistory', next);
+    } catch (e) {
+      // 忽略持久化失败
+    }
+    this.appendLog('已新增服务器地址：' + addr);
+    this.fetchServerGroups();
+  }
+
+  /** 长按历史地址：弹出删除确认，确认后从历史与持久化中删除 */
+  private confirmDeleteServer(addr: string): void {
+    promptAction.showDialog({
+      title: this.res($r('app.string.delete_server_title')),
+      message: this.res($r('app.string.delete_server_msg')) + '\n' + addr,
+      buttons: [
+        { text: this.res($r('app.string.cancel')), color: '#666666' },
+        { text: this.res($r('app.string.delete')), color: '#cf1322' }
+      ]
+    }).then((res) => {
+      if (res.index === 1) {
+        this.deleteServer(addr);
+      }
+    }).catch(() => {
+    });
+  }
+
+  /** 执行删除历史服务器地址（更新界面并持久化） */
+  private async deleteServer(addr: string): Promise<void> {
+    const next = this.serverHistory.filter((x) => x !== addr);
+    this.serverHistory = next;
+    if (this.serverUrl === addr) {
+      this.serverUrl = next.length > 0 ? next[0] : '';
+    }
+    try {
+      const context = this.getUIContext().getHostContext() as common.Context;
+      await prefPutList(context, 'serverHistory', next);
+    } catch (e) {
+      // 忽略持久化失败
+    }
+    this.appendLog('已删除服务器地址：' + addr);
+  }
+
+  /** 按当前系统语言读取字符串资源（用于 build 之外的运行时文案） */
+  private res(id: Resource): string {
+    const ctx = this.getUIContext().getHostContext() as common.Context;
+    return ctx.resourceManager.getStringSync(id);
+  }
+
+  /** 把运行时状态文本翻译为当前系统语言（日志仍保留中文，界面显示本地化） */
+  private statusLocale(): string {
+    const s = this.statusText;
+    if (s === '未连接') return this.res($r('app.string.st_not_connected'));
+    if (s === '连接中') return this.res($r('app.string.st_connecting'));
+    if (s === '已连接') return this.res($r('app.string.st_connected'));
+    if (s === '连接失败') return this.res($r('app.string.st_connect_fail'));
+    if (s === '已断开') return this.res($r('app.string.st_disconnected'));
+    if (s === '已断开（会话被服务器终止）') return this.res($r('app.string.st_kicked'));
+    return s;
   }
 
   private appendLog(msg: string): void {
@@ -625,10 +1007,10 @@ struct Index {
     this.appendLog('服务器下发 Banner，等待确认...');
     // 弹窗要求用户确认；确认后关闭
     promptAction.showDialog({
-      title: '服务器公告',
+      title: this.res($r('app.string.server_announce')),
       message: bannerText,
       buttons: [
-        { text: '我知道了', color: '#0a59f7', primary: true }
+        { text: this.res($r('app.string.got_it')), color: '#0a59f7', primary: true }
       ]
     }).then(() => {
       this.appendLog('用户已确认 Banner');
@@ -642,18 +1024,6 @@ struct Index {
     this.serverUrl = addr;
     this.appendLog('使用历史服务器：' + addr);
     this.fetchServerGroups();
-  }
-
-  /** 下拉选择服务器地址：回填并拉取用户组 */
-  private onServerSelect(index: number): void {
-    const opts = this.serverSelectOptions();
-    // 最后一个选项恒为“+ 新增服务器地址”
-    if (index >= 0 && index < opts.length - 1) {
-      this.addingServer = false;
-      this.useServerHistory(this.serverHistory[index]);
-    } else if (index >= 0 && index === opts.length - 1) {
-      this.addingServer = true;
-    }
   }
 
   /** 新增地址确定：加入历史并回填、拉取用户组 */
@@ -676,16 +1046,6 @@ struct Index {
     this.addingServer = false;
     this.appendLog('已新增服务器地址：' + addr);
     this.fetchServerGroups();
-  }
-
-  /** 服务器下拉选项：历史地址 + 末尾“+ 新增服务器地址” */
-  private serverSelectOptions(): Array<SelectOption> {
-    const opts: Array<SelectOption> = [];
-    for (const a of this.serverHistory) {
-      opts.push({ value: a });
-    }
-    opts.push({ value: '+ 新增服务器地址' });
-    return opts;
   }
 
   /** 从服务器拉取可选用户组，供下拉选择 */
@@ -789,42 +1149,36 @@ struct Index {
     GridRow({ columns: 12, gutter: 16 }) {
       GridCol({ span: { xs: 12, sm: 12, md: 8, lg: 6 }, offset: { xs: 0, sm: 0, md: 2, lg: 3 } }) {
       Column({ space: 12 }) {
-      Text('OpenConnect VPN').fontSize(24).fontWeight(FontWeight.Bold).margin({ top: 24 })
+      Text($r('app.string.app_title')).fontSize(24).fontWeight(FontWeight.Bold).margin({ top: 24 })
 
-      // 服务器地址：下拉选择历史地址（默认显示最近一次使用），末尾可新增
-      Select(this.serverSelectOptions())
-        .selected(this.serverHistory.length > 0 && this.serverHistory.indexOf(this.serverUrl) >= 0
-          ? this.serverHistory.indexOf(this.serverUrl) : 0)
-        .value(this.serverUrl || '选择服务器地址')
-        .font({ size: 15 })
-        .width('100%')
-        .height(56)
-        .margin({ top: 16 })
-        .onSelect((index: number) => this.onServerSelect(index))
-      // 选择“+ 新增服务器地址”后展开输入框
-      if (this.addingServer) {
-        Row({ space: 8 }) {
-          TextInput({ placeholder: '输入新的服务器地址 (https://vpn.example.com)', text: this.newServerInput })
-            .layoutWeight(1)
-            .maxLength(1024)
-            .onChange((v: string) => this.newServerInput = v)
-            .onSubmit(() => this.confirmNewServer())
-          Button('确定')
-            .fontSize(14)
-            .height(40)
-            .onClick(() => this.confirmNewServer())
-        }
-        .width('100%')
-        .margin({ top: 6 })
+      // 服务器地址：点击弹出选择弹窗（历史地址可滑动选择/删除，末尾添加）
+      Row() {
+        Text(this.serverUrl || this.res($r('app.string.choose_server')))
+          .fontSize(15)
+          .fontColor(this.serverUrl ? $r('app.color.text_title') : $r('app.color.text_hint'))
+          .layoutWeight(1)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
+      .width('100%')
+      .height(48)
+      .padding({ left: 12, right: 12 })
+      .borderRadius(8)
+      .backgroundColor($r('app.color.textinput_bg'))
+      .margin({ top: 16 })
+      .onClick(() => this.openServerSelectDialog())
       Select(this.groupOptions.length > 0
         ? this.groupOptions.map((g: string): SelectOption => ({ value: g }))
-        : [{ value: '（输入服务器地址后自动获取用户组）' }])
+        : [{ value: this.res($r('app.string.no_group_hint')) }])
         .selected(this.groupOptions.indexOf(this.authGroup) >= 0 ? this.groupOptions.indexOf(this.authGroup) : 0)
-        .value(this.authGroup || '用户组')
-        .font({ size: 16 })
+        .value(this.serverUrl
+          ? (this.authGroup || this.res($r('app.string.group')))
+          : this.res($r('app.string.group')))
+        .font({ size: 15 })
         .width('100%')
-        .height(56)
+        .height(48)
+        .borderRadius(8)
+        .backgroundColor($r('app.color.textinput_bg'))
         .onSelect((index: number) => {
           if (index >= 0 && index < this.groupOptions.length) {
             this.authGroup = this.groupOptions[index];
@@ -832,18 +1186,27 @@ struct Index {
             this.saveAuthGroup(); // 记住本次选择，下次启动默认选中
           }
         })
-      TextInput({ placeholder: '用户名', text: this.username })
+      TextInput({ placeholder: $r('app.string.username'), text: this.username })
+        .fontSize(15)
         .maxLength(256)
+        .height(48)
+        .borderRadius(8)
+        .backgroundColor($r('app.color.textinput_bg'))
         .onChange((v: string) => this.username = v)
-      TextInput({ placeholder: '密码', text: this.password })
+      TextInput({ placeholder: $r('app.string.password'), text: this.password })
         .type(InputType.Password)
+        .fontSize(15)
         .maxLength(256)
+        .height(48)
+        .borderRadius(8)
+        .backgroundColor($r('app.color.textinput_bg'))
         .onChange((v: string) => this.password = v)
 
       Row({ space: 16 }) {
-        Button(this.isConnected || this.isConnecting ? '断开' : '连接')
+        Button(this.isConnected || this.isConnecting
+          ? this.res($r('app.string.disconnect')) : this.res($r('app.string.connect')))
           .fontSize(14)
-          .height(36)
+          .height(40)
           .onClick(() => {
             if (this.isConnected || this.isConnecting) {
               this.disconnect();
@@ -853,37 +1216,38 @@ struct Index {
           })
       }.margin({ top: 8 })
 
-      Button('复制日志')
+      Button(this.res($r('app.string.copy_logs')))
         .onClick(() => this.copyLog())
         .margin({ top: 4 })
         .fontSize(14)
-        .height(36)
+        .height(40)
 
       // 状态与连接时长合并为一行显示
-      Text('状态: ' + this.statusText
+      Text(this.res($r('app.string.status')) + this.statusLocale()
         + (this.isConnected && this.connectedDuration.length > 0 ? ' · ' + this.connectedDuration : ''))
         .fontSize(16)
-        .fontColor(this.isConnected ? '#1aa64b' : '#cf1322')
+        .fontColor(this.isConnected ? $r('app.color.connected') : $r('app.color.disconnected'))
 
       Scroll() {
         Text(this.logText)
           .fontSize(12)
-          .fontColor('#333333')
+          .fontColor($r('app.color.text_primary'))
           .width('100%')
           .textAlign(TextAlign.Start)
       }
       .layoutWeight(1)
-      .backgroundColor('#f5f5f5')
+      .backgroundColor($r('app.color.log_bg'))
       .borderRadius(8)
       .padding(8)
       .margin({ top: 8, bottom: 8 })
-      // 页面最底部展示 App 版本号（英文形式）
-      Text('Version 1.0.1')
+      // 页面最底部：进入“关于 OpenConnect”弹窗
+      Text(this.res($r('app.string.about_title')))
         .fontSize(12)
-        .fontColor('#999999')
+        .fontColor($r('app.color.text_link'))
         .width('100%')
         .textAlign(TextAlign.Center)
         .margin({ bottom: 12 })
+        .onClick(() => this.showAboutDialog())
       }
       .width('100%')
       .height('100%')

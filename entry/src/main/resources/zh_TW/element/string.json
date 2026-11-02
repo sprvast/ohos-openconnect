@@ -1,0 +1,188 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "OpenConnect VPN 用戶端"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "OpenConnect VPN 用戶端"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "OpenConnect"
+    },
+    {
+      "name": "VpnExtAbility_desc",
+      "value": "OpenConnect VPN 隧道"
+    },
+    {
+      "name": "permission_internet",
+      "value": "用於建立 VPN 網路連線"
+    },
+    {
+      "name": "permission_network_info",
+      "value": "用於取得網路狀態與統計資訊"
+    },
+    {
+      "name": "permission_running_lock",
+      "value": "用於在 VPN 連線期間保持背景執行，防止系統休眠中斷連線"
+    },
+    {
+      "name": "connect",
+      "value": "連線"
+    },
+    {
+      "name": "disconnect",
+      "value": "中斷"
+    },
+    {
+      "name": "server_url",
+      "value": "伺服器位址"
+    },
+    {
+      "name": "username",
+      "value": "使用者名稱"
+    },
+    {
+      "name": "password",
+      "value": "密碼"
+    },
+    {
+      "name": "status",
+      "value": "狀態: "
+    },
+    {
+      "name": "choose_server",
+      "value": "選擇伺服器位址"
+    },
+    {
+      "name": "no_saved_server",
+      "value": "暫無已儲存的伺服器位址"
+    },
+    {
+      "name": "long_press_delete",
+      "value": "長按刪除"
+    },
+    {
+      "name": "long_press_delete_hint",
+      "value": "長按位址可刪除"
+    },
+    {
+      "name": "add_new_server",
+      "value": "+ 新增伺服器位址"
+    },
+    {
+      "name": "add_server_title",
+      "value": "新增伺服器位址"
+    },
+    {
+      "name": "new_server_placeholder",
+      "value": "輸入新的伺服器位址 (https://vpn.example.com)"
+    },
+    {
+      "name": "confirm_btn",
+      "value": "確定"
+    },
+    {
+      "name": "group",
+      "value": "使用者群組"
+    },
+    {
+      "name": "no_group_hint",
+      "value": "（輸入伺服器位址後自動取得使用者群組）"
+    },
+    {
+      "name": "copy_logs",
+      "value": "複製記錄"
+    },
+    {
+      "name": "about_title",
+      "value": "關於 OpenConnect"
+    },
+    {
+      "name": "server_announce",
+      "value": "伺服器公告"
+    },
+    {
+      "name": "delete_server_title",
+      "value": "刪除伺服器位址"
+    },
+    {
+      "name": "delete_server_msg",
+      "value": "確定刪除該伺服器位址？"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "delete",
+      "value": "刪除"
+    },
+    {
+      "name": "got_it",
+      "value": "我知道了"
+    },
+    {
+      "name": "app_title",
+      "value": "OpenConnect VPN"
+    },
+    {
+      "name": "about_app_desc",
+      "value": "HarmonyOS 安全遠端存取用戶端"
+    },
+    {
+      "name": "about_apply_info",
+      "value": "應用程式資訊"
+    },
+    {
+      "name": "about_version",
+      "value": "版本"
+    },
+    {
+      "name": "about_based_on",
+      "value": "基於開發"
+    },
+    {
+      "name": "about_backend",
+      "value": "相容協定"
+    },
+    {
+      "name": "about_opensource",
+      "value": "開放原始碼與授權"
+    },
+    {
+      "name": "about_privacy",
+      "value": "隱私權說明"
+    },
+    {
+      "name": "about_privacy_body",
+      "value": "為提供遠端存取服務，本應用程式會取得並使用：\n· 伺服器位址與連線資訊；\n· 登入帳號（使用者名稱、密碼、使用者群組）；\n· 裝置資訊（裝置型號、作業系統版本、裝置識別碼）；\n· 建立 VPN 隧道所需的網路存取權限。\n密碼僅本次連線使用，不會永久儲存；連線記錄僅儲存在本機，用於問題排查。"
+    },
+    {
+      "name": "st_not_connected",
+      "value": "未連線"
+    },
+    {
+      "name": "st_connecting",
+      "value": "連線中"
+    },
+    {
+      "name": "st_connected",
+      "value": "已連線"
+    },
+    {
+      "name": "st_connect_fail",
+      "value": "連線失敗"
+    },
+    {
+      "name": "st_disconnected",
+      "value": "已中斷"
+    },
+    {
+      "name": "st_kicked",
+      "value": "已中斷（工作階段被伺服器終止）"
+    }
+  ]
+}

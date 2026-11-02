@@ -1,0 +1,188 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "OpenConnect VPN Client"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "OpenConnect VPN Client"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "OpenConnect"
+    },
+    {
+      "name": "VpnExtAbility_desc",
+      "value": "OpenConnect VPN Tunnel"
+    },
+    {
+      "name": "permission_internet",
+      "value": "Used to establish the VPN network connection"
+    },
+    {
+      "name": "permission_network_info",
+      "value": "Used to obtain network status and statistics"
+    },
+    {
+      "name": "permission_running_lock",
+      "value": "Used to keep the app running in the background during a VPN connection and prevent the system from deep-sleeping and interrupting the connection"
+    },
+    {
+      "name": "connect",
+      "value": "Connect"
+    },
+    {
+      "name": "disconnect",
+      "value": "Disconnect"
+    },
+    {
+      "name": "server_url",
+      "value": "Server Address"
+    },
+    {
+      "name": "username",
+      "value": "Username"
+    },
+    {
+      "name": "password",
+      "value": "Password"
+    },
+    {
+      "name": "status",
+      "value": "Status: "
+    },
+    {
+      "name": "choose_server",
+      "value": "Select server address"
+    },
+    {
+      "name": "no_saved_server",
+      "value": "No saved server address"
+    },
+    {
+      "name": "long_press_delete",
+      "value": "Long press to delete"
+    },
+    {
+      "name": "long_press_delete_hint",
+      "value": "Long press an address to delete it"
+    },
+    {
+      "name": "add_new_server",
+      "value": "+ Add server address"
+    },
+    {
+      "name": "add_server_title",
+      "value": "Add Server Address"
+    },
+    {
+      "name": "new_server_placeholder",
+      "value": "Enter a new server address (https://vpn.example.com)"
+    },
+    {
+      "name": "confirm_btn",
+      "value": "OK"
+    },
+    {
+      "name": "group",
+      "value": "Group"
+    },
+    {
+      "name": "no_group_hint",
+      "value": "(Groups are fetched automatically after entering a server address)"
+    },
+    {
+      "name": "copy_logs",
+      "value": "Copy Logs"
+    },
+    {
+      "name": "about_title",
+      "value": "About OpenConnect"
+    },
+    {
+      "name": "server_announce",
+      "value": "Server Announcement"
+    },
+    {
+      "name": "delete_server_title",
+      "value": "Delete Server Address"
+    },
+    {
+      "name": "delete_server_msg",
+      "value": "Delete this server address?"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "delete",
+      "value": "Delete"
+    },
+    {
+      "name": "got_it",
+      "value": "Got It"
+    },
+    {
+      "name": "app_title",
+      "value": "OpenConnect VPN"
+    },
+    {
+      "name": "about_app_desc",
+      "value": "HarmonyOS secure remote access client"
+    },
+    {
+      "name": "about_apply_info",
+      "value": "App Info"
+    },
+    {
+      "name": "about_version",
+      "value": "Version"
+    },
+    {
+      "name": "about_based_on",
+      "value": "Based on"
+    },
+    {
+      "name": "about_backend",
+      "value": "Compatible Protocol"
+    },
+    {
+      "name": "about_opensource",
+      "value": "Open Source & License"
+    },
+    {
+      "name": "about_privacy",
+      "value": "Privacy"
+    },
+    {
+      "name": "about_privacy_body",
+      "value": "To provide remote access, this app collects and uses:\n· Server address and connection info;\n· Login account (username, password, group);\n· Device info (model, OS version, device identifier);\n· Network access required to establish the VPN tunnel.\nThe password is used only for the current session and is not stored. Logs are kept only on this device for troubleshooting."
+    },
+    {
+      "name": "st_not_connected",
+      "value": "Not connected"
+    },
+    {
+      "name": "st_connecting",
+      "value": "Connecting"
+    },
+    {
+      "name": "st_connected",
+      "value": "Connected"
+    },
+    {
+      "name": "st_connect_fail",
+      "value": "Connection failed"
+    },
+    {
+      "name": "st_disconnected",
+      "value": "Disconnected"
+    },
+    {
+      "name": "st_kicked",
+      "value": "Disconnected (session terminated by server)"
+    }
+  ]
+}
