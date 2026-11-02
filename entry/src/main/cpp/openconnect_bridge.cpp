@@ -345,6 +345,8 @@ napi_value NewSession(napi_env env, napi_callback_info info)
 {
     /* 每次新连接清空上次残留的 Banner，避免显示上一台服务器的旧公告 */
     g_banner[0] = '\0';
+    /* 每次新连接清空上次残留的用户组缓存，避免服务器不通时误用旧列表 */
+    g_auth_groups[0] = '\0';
 
     if (g_session) {
         openconnect_vpninfo_free(g_session->vpninfo);

@@ -78,7 +78,7 @@
     },
     {
       "name": "new_server_placeholder",
-      "value": "輸入新的伺服器位址 (https://vpn.example.com)"
+      "value": "輸入新的伺服器位址"
     },
     {
       "name": "confirm_btn",

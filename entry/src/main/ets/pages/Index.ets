@@ -52,7 +52,7 @@ struct AboutDialog {
       Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
 
       this.sectionTitle(this.res($r('app.string.about_apply_info')))
-      this.aboutRow(this.res($r('app.string.about_version')), '1.0.2')
+      this.aboutRow(this.res($r('app.string.about_version')), '1.0.3')
       this.aboutRow(this.res($r('app.string.about_based_on')), 'OpenConnect v9.21')
       this.aboutRow(this.res($r('app.string.about_backend')), 'OpenConnect / AnyConnect')
 
@@ -279,9 +279,15 @@ struct ServerSelectDialog {
 function ocProbeGroups(url: string): string {
   OpenConnect.newSession();
   OpenConnect.parseUrl(url);
-  OpenConnect.obtainCookie(); // 回调会把 group 列表写入 g_auth_groups
+  // 探测用户组时未填用户名/密码，认证本身必返回失败码，因此不能以 obtainCookie()
+  // 的返回值判断成败。newSession 已清空 g_auth_groups 缓存，探测后组列表为空
+  // 才表示失败（服务器不可达/网络异常/未下发组）。
+  OpenConnect.obtainCookie();
   const groups = OpenConnect.getServerAuthGroups();
   OpenConnect.freeSession();
+  if (!groups || groups.length === 0) {
+    throw new Error('probe_groups_failed, no groups returned');
+  }
   return groups;
 }
 
@@ -650,10 +656,7 @@ struct Index {
     // 跳过（不会重启扩展），监控读到的是上一次连接的残留状态，造成“假连接→假断开”。
     this._disconnectRequested = false;
     this.isConnecting = true;
-    // 兜底：若尚未拉取用户组则先自动获取
-    if (this.groupOptions.length === 0) {
-      await this.fetchServerGroups();
-    }
+    // 不再在此自动拉取用户组：获取组失败后不再自动重试，由用户手动选择地址/触发拉取
     // —— 每次连接都从输入框/下拉的当前实时值快照本次连接参数，不使用历史恢复/缓存的旧值 ——
     // 之后校验、写配置文件、传入 want 全部用这份快照，确保不会因后续异步流程被改写。
     const sUrl = this.serverUrl;
@@ -1069,7 +1072,10 @@ struct Index {
         this.appendLog('服务器未返回用户组');
       }
     } catch (e) {
-      this.appendLog('拉取用户组失败: ' + JSON.stringify(e));
+      // 获取组失败：初始化用户组输入框（清空选项与当前选中值，恢复默认占位）
+      this.groupOptions = [];
+      this.authGroup = '';
+      this.appendLog('获取用户组失败，请检查服务器地址是否正确');
     }
   }
 

@@ -78,7 +78,7 @@
     },
     {
       "name": "new_server_placeholder",
-      "value": "Enter a new server address (https://vpn.example.com)"
+      "value": "Enter a new server address"
     },
     {
       "name": "confirm_btn",
