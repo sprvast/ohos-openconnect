@@ -2,19 +2,19 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "OpenConnect VPN 客户端"
+      "value": "OhConnect VPN 客户端"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "OpenConnect VPN 客户端"
+      "value": "OhConnect VPN 客户端"
     },
     {
       "name": "EntryAbility_label",
-      "value": "OpenConnect"
+      "value": "OhConnect"
     },
     {
       "name": "VpnExtAbility_desc",
-      "value": "OpenConnect VPN 隧道"
+      "value": "OhConnect VPN 隧道"
     },
     {
       "name": "permission_internet",
@@ -98,7 +98,7 @@
     },
     {
       "name": "about_title",
-      "value": "关于 OpenConnect"
+      "value": "关于 OhConnect"
     },
     {
       "name": "server_announce",
@@ -174,7 +174,7 @@
     },
     {
       "name": "app_title",
-      "value": "OpenConnect VPN"
+      "value": "OhConnect"
     },
     {
       "name": "about_apply_info",

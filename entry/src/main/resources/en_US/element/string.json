@@ -2,19 +2,19 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "OpenConnect VPN Client"
+      "value": "OhConnect VPN Client"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "OpenConnect VPN Client"
+      "value": "OhConnect VPN Client"
     },
     {
       "name": "EntryAbility_label",
-      "value": "OpenConnect"
+      "value": "OhConnect"
     },
     {
       "name": "VpnExtAbility_desc",
-      "value": "OpenConnect VPN Tunnel"
+      "value": "OhConnect VPN Tunnel"
     },
     {
       "name": "permission_internet",
@@ -98,7 +98,7 @@
     },
     {
       "name": "about_title",
-      "value": "About OpenConnect"
+      "value": "About OhConnect"
     },
     {
       "name": "server_announce",
@@ -174,7 +174,7 @@
     },
     {
       "name": "app_title",
-      "value": "OpenConnect VPN"
+      "value": "OhConnect"
     },
     {
       "name": "about_apply_info",

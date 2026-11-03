@@ -27,6 +27,7 @@ import { promptAction } from '@kit.ArkUI';
 @CustomDialog
 struct AboutDialog {
   controller?: CustomDialogController;
+  scroller: Scroller = new Scroller();
 
   private res(id: Resource): string {
     const ctx = this.getUIContext().getHostContext() as common.Context;
@@ -35,71 +36,70 @@ struct AboutDialog {
 
   build() {
     Column() {
-      // 应用概览
-      Column() {
-        Text(this.res($r('app.string.app_title')))
-          .fontSize(22)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.text_title'))
+      // 关于内容随屏幕高度自适应，内容超出时可滚动（适配平板等大屏）
+      Scroll(this.scroller) {
+        Column() {
+          // 应用概览
+          Column() {
+            Text(this.res($r('app.string.app_title')))
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.text_title'))
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Center)
+          .padding({ top: 24, bottom: 18 })
+
+          Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+
+          this.sectionTitle(this.res($r('app.string.about_apply_info')))
+          this.aboutRow(this.res($r('app.string.about_version')), '1.0.8')
+          this.aboutRow(this.res($r('app.string.about_based_on')), 'OpenConnect v9.21')
+          this.aboutRow(this.res($r('app.string.about_backend')), 'OpenConnect / AnyConnect')
+
+          Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+
+          this.sectionTitle(this.res($r('app.string.about_opensource')))
+          this.osBlock(
+            this.res($r('app.string.about_os_self_name')),
+            this.res($r('app.string.about_os_self_license')),
+            this.res($r('app.string.about_os_self_home')),
+            this.res($r('app.string.about_os_self_mirror'))
+          )
+          this.osBlock(
+            this.res($r('app.string.about_os_up_name')),
+            this.res($r('app.string.about_os_up_license')),
+            this.res($r('app.string.about_os_up_home')),
+            ''
+          )
+
+          Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+
+          this.sectionTitle(this.res($r('app.string.about_privacy')))
+          Text(this.res($r('app.string.about_privacy_body')))
+            .fontSize(12)
+            .fontColor($r('app.color.text_gray8'))
+            .width('100%')
+            .padding({ left: 2, bottom: 14 })
+            .textAlign(TextAlign.Start)
+
+          Button(this.res($r('app.string.got_it')))
+            .fontSize(14)
+            .height(40)
+            .width('100%')
+            .margin({ top: 4, bottom: 16 })
+            .onClick(() => {
+              this.controller?.close();
+            })
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16 })
       }
       .width('100%')
-      .alignItems(HorizontalAlign.Center)
-      .padding({ top: 24, bottom: 18 })
-
-      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
-
-      this.sectionTitle(this.res($r('app.string.about_apply_info')))
-      this.aboutRow(this.res($r('app.string.about_version')), '1.0.5')
-      this.aboutRow(this.res($r('app.string.about_based_on')), 'OpenConnect v9.21')
-      this.aboutRow(this.res($r('app.string.about_backend')), 'OpenConnect / AnyConnect')
-
-      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
-
-      this.sectionTitle(this.res($r('app.string.about_opensource')))
-      this.osBlock(
-        this.res($r('app.string.about_os_self_name')),
-        this.res($r('app.string.about_os_self_license')),
-        this.res($r('app.string.about_os_self_home')),
-        this.res($r('app.string.about_os_self_mirror'))
-      )
-      this.osBlock(
-        this.res($r('app.string.about_os_up_name')),
-        this.res($r('app.string.about_os_up_license')),
-        this.res($r('app.string.about_os_up_home')),
-        ''
-      )
-
-      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
-
-      // 免责声明：明确本客户端与 OpenConnect 项目无隶属关系
-      this.sectionTitle(this.res($r('app.string.about_disclaimer')))
-      Text(this.res($r('app.string.about_disclaimer_body')))
-        .fontSize(12)
-        .fontColor($r('app.color.text_gray8'))
-        .width('100%')
-        .padding({ left: 2, bottom: 14 })
-        .textAlign(TextAlign.Start)
-
-      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
-
-      this.sectionTitle(this.res($r('app.string.about_privacy')))
-      Text(this.res($r('app.string.about_privacy_body')))
-        .fontSize(12)
-        .fontColor($r('app.color.text_gray8'))
-        .width('100%')
-        .padding({ left: 2, bottom: 14 })
-        .textAlign(TextAlign.Start)
-
-      Button(this.res($r('app.string.got_it')))
-        .fontSize(14)
-        .height(40)
-        .width('100%')
-        .margin({ top: 4, bottom: 16 })
-        .onClick(() => {
-          this.controller?.close();
-        })
+      .height('100%')
+      .scrollBar(BarState.Auto)
+      .align(Alignment.Top)
     }
-    .padding({ left: 16, right: 16 })
   }
 
   @Builder
