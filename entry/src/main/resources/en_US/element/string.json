@@ -229,6 +229,14 @@
       "value": "Official: https://gitlab.com/openconnect/openconnect"
     },
     {
+      "name": "about_disclaimer",
+      "value": "Disclaimer"
+    },
+    {
+      "name": "about_disclaimer_body",
+      "value": "This project is an unofficial VPN client developed for the OpenHarmony platform and has no affiliation with the OpenConnect project or its authors."
+    },
+    {
       "name": "about_privacy",
       "value": "Privacy"
     },

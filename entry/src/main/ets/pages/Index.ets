@@ -71,6 +71,17 @@ struct AboutDialog {
 
       Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
 
+      // 免责声明：明确本客户端与 OpenConnect 项目无隶属关系
+      this.sectionTitle(this.res($r('app.string.about_disclaimer')))
+      Text(this.res($r('app.string.about_disclaimer_body')))
+        .fontSize(12)
+        .fontColor($r('app.color.text_gray8'))
+        .width('100%')
+        .padding({ left: 2, bottom: 14 })
+        .textAlign(TextAlign.Start)
+
+      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+
       this.sectionTitle(this.res($r('app.string.about_privacy')))
       Text(this.res($r('app.string.about_privacy_body')))
         .fontSize(12)

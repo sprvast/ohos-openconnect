@@ -229,6 +229,14 @@
       "value": "官方地址：https://gitlab.com/openconnect/openconnect"
     },
     {
+      "name": "about_disclaimer",
+      "value": "免责声明"
+    },
+    {
+      "name": "about_disclaimer_body",
+      "value": "本项目为面向 OpenHarmony 平台开发的非官方 VPN 客户端，与 OpenConnect 项目及其作者均无隶属关系。"
+    },
+    {
       "name": "about_privacy",
       "value": "隐私说明"
     },
