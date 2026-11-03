@@ -41,14 +41,24 @@ static char g_auth_group[256] = {0};
 /* 服务器返回的可选用户组列表（逗号分隔），供 UI 下拉选择 */
 static char g_auth_groups[16384] = {0};
 /* 服务器下发的 Banner（AnyLink 认证阶段 <banner> 或 CSTP X-CSTP-Banner），
- * 连接成功后由界面弹窗展示并要求用户确认。 */
+ * 连接成功后被界面弹窗展示并要求用户确认。 */
 static char g_banner[8192] = {0};
+
+/* “阻止与不受信任的服务器连接”开关（默认开启）：
+ * - 1 = 严格校验证书，证书链校验失败即拒绝连接（返回非0）
+ * - 0 = 接受任意证书（兼容自签名/不受信任服务器）
+ * 由 ArkTS 通过 SetTrustUntrustedServers(bool) 在 NewSession 前设置。 */
+static int g_trust_untrusted_server = 1;
 
 /* 最近一次连接过程的 openconnect 日志缓存（供 ArkTS 读取显示，便于定位）。
  * 加大到 64KB：认证阶段（含 Banner/表单）行不会在后面海量 CSTP 头写入时被冲掉。 */
 #define G_LOG_BUF_SIZE 65536
 static char g_log_buf[G_LOG_BUF_SIZE] = {0};
 static pthread_mutex_t g_log_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* 最近一次证书链校验失败的原因（"阻止不受信任服务器"开启且拒绝时记录），
+ * 供 ArkTS 读取后按原因分类提醒用户。NewSession 时清空。 */
+static char g_cert_reject_reason[1024] = {0};
 
 namespace {
 
@@ -289,13 +299,26 @@ static int process_auth_form_cb(void *privdata, struct oc_auth_form *form)
     return (has_user && has_pass) ? 0 : 1;
 }
 
-/* 证书校验回调：POC 阶段接受任意证书（否则自签名服务器会被拒）。
- * 生产实现应在此校验指纹或把选择权交给用户。 */
+/* 证书校验回调：由 openconnect 校验证书链后调用。
+ * - g_trust_untrusted_server=1（“阻止不受信任服务器”开启，默认）：证书链校验
+ *   失败（reason 非空）时返回 -1 拒绝连接；
+ * - g_trust_untrusted_server=0：接受任意证书（兼容自签名/不受信任服务器）。 */
 static int validate_peer_cert_cb(void *privdata, const char *reason)
 {
     (void)privdata;
+    if (g_trust_untrusted_server) {
+        /* 严格模式：校验失败即拒绝，并记录失败原因供 UI 提醒 */
+        if (reason && reason[0]) {
+            OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG,
+                         "REJECT untrusted peer cert: %{public}s", reason);
+            strncpy(g_cert_reject_reason, reason, sizeof(g_cert_reject_reason) - 1);
+            g_cert_reject_reason[sizeof(g_cert_reject_reason) - 1] = '\0';
+            return -1; /* 非0 = 拒绝 */
+        }
+        return 0; /* 证书受信任 */
+    }
     OH_LOG_Print(LOG_APP, LOG_WARN, LOG_DOMAIN, LOG_TAG,
-                 "accepting peer cert (POC): %{public}s", reason ? reason : "");
+                 "accepting peer cert (POC, untrusted allowed): %{public}s", reason ? reason : "");
     return 0; /* 0 = 接受 */
 }
 
@@ -340,11 +363,37 @@ napi_value InitSsl(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
+/* setTrustUntrustedServer(trust: bool): void —— 设置“阻止与不受信任的服务器连接”开关。
+ * trust=true 校验证书（默认）；trust=false 接受任意证书。须在 NewSession/连接前调用。 */
+napi_value SetTrustUntrustedServer(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    bool trust = true;
+    if (argc >= 1) {
+        napi_get_value_bool(env, argv[0], &trust);
+    }
+    g_trust_untrusted_server = trust ? 1 : 0;
+    return nullptr;
+}
+
+/* getCertRejectReason(): string —— 返回最近一次“证书校验被拒绝”的原因。
+ * 无拒绝（证书受信任/未启用严格校验）时返回空串。 */
+napi_value GetCertRejectReason(napi_env env, napi_callback_info info)
+{
+    napi_value result;
+    napi_create_string_utf8(env, g_cert_reject_reason, NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
 /* newSession(): number —— 创建会话，返回句柄(此处用 cmd_fd) */
 napi_value NewSession(napi_env env, napi_callback_info info)
 {
     /* 每次新连接清空上次残留的 Banner，避免显示上一台服务器的旧公告 */
     g_banner[0] = '\0';
+    /* 每次新连接清空上次残留的证书拒绝原因，避免误报上一台服务器的问题 */
+    g_cert_reject_reason[0] = '\0';
     /* 每次新连接清空上次残留的用户组缓存，避免服务器不通时误用旧列表 */
     g_auth_groups[0] = '\0';
 
@@ -738,6 +787,8 @@ napi_value Init(napi_env env, napi_value exports)
         {"getVersion", nullptr, GetVersion, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"initSsl", nullptr, InitSsl, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"newSession", nullptr, NewSession, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTrustUntrustedServer", nullptr, SetTrustUntrustedServer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getCertRejectReason", nullptr, GetCertRejectReason, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"parseUrl", nullptr, ParseUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setAuth", nullptr, SetAuth, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setAuthGroup", nullptr, SetAuthGroup, nullptr, nullptr, nullptr, napi_default, nullptr},

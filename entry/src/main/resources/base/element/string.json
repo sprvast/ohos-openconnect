@@ -125,12 +125,56 @@
       "value": "我知道了"
     },
     {
-      "name": "app_title",
-      "value": "OpenConnect VPN"
+      "name": "input_error_title",
+      "value": "连接失败，请检查输入"
     },
     {
-      "name": "about_app_desc",
-      "value": "HarmonyOS 安全远程接入客户端"
+      "name": "groups_failed_title",
+      "value": "获取用户组失败"
+    },
+    {
+      "name": "groups_failed_msg",
+      "value": "未能从服务器获取用户组，请检查服务器地址是否正确、网络是否可达。"
+    },
+    {
+      "name": "url_scheme_title",
+      "value": "服务器地址格式错误"
+    },
+    {
+      "name": "url_scheme_msg",
+      "value": "服务器地址必须以 https:// 开头，例如：https://vpn.example.com"
+    },
+    {
+      "name": "cert_reject_title",
+      "value": "连接被拒：服务器证书不受信任"
+    },
+    {
+      "name": "cert_reject_hint",
+      "value": "当前开启“阻止与不受信任的服务器连接”，检测到服务器证书存在问题，连接已终止。"
+    },
+    {
+      "name": "cert_reject_go_settings",
+      "value": "前往设置"
+    },
+    {
+      "name": "cert_reject_reason_expired",
+      "value": "证书已过期，与实际时间不匹配。"
+    },
+    {
+      "name": "cert_reject_reason_hostname",
+      "value": "证书与服务器名称（域名）不匹配。"
+    },
+    {
+      "name": "cert_reject_reason_untrusted",
+      "value": "证书来自不受信任的来源（自签名或不受信任的签发机构）。"
+    },
+    {
+      "name": "cert_reject_reason_other",
+      "value": "服务器证书不受信任或校验无效。"
+    },
+    {
+      "name": "app_title",
+      "value": "OpenConnect VPN"
     },
     {
       "name": "about_apply_info",
@@ -151,6 +195,38 @@
     {
       "name": "about_opensource",
       "value": "开源与许可"
+    },
+    {
+      "name": "about_os_license_label",
+      "value": "开源协议："
+    },
+    {
+      "name": "about_os_self_name",
+      "value": "ohos-openconnect（本项目）"
+    },
+    {
+      "name": "about_os_self_license",
+      "value": "LGPL-2.1-only"
+    },
+    {
+      "name": "about_os_self_home",
+      "value": "开源地址：https://github.com/sprvast/ohos-openconnect"
+    },
+    {
+      "name": "about_os_self_mirror",
+      "value": "镜像：https://gitee.com/sprvast/ohos-openconnect"
+    },
+    {
+      "name": "about_os_up_name",
+      "value": "OpenConnect（上游项目）"
+    },
+    {
+      "name": "about_os_up_license",
+      "value": "LGPL-2.1-only"
+    },
+    {
+      "name": "about_os_up_home",
+      "value": "官方地址：https://gitlab.com/openconnect/openconnect"
     },
     {
       "name": "about_privacy",
@@ -183,6 +259,38 @@
     {
       "name": "st_kicked",
       "value": "已断开（会话被服务器终止）"
+    },
+    {
+      "name": "settings_title",
+      "value": "设置"
+    },
+    {
+      "name": "settings_open",
+      "value": "设置"
+    },
+    {
+      "name": "set_block_untrusted",
+      "value": "阻止与不受信任的服务器连接"
+    },
+    {
+      "name": "set_block_untrusted_desc",
+      "value": "不允许连接到使用不受信任证书的服务器。"
+    },
+    {
+      "name": "set_debug_mode",
+      "value": "调试模式"
+    },
+    {
+      "name": "set_debug_mode_desc",
+      "value": "开启后主页面显示日志输出，便于排查问题。"
+    },
+    {
+      "name": "set_enable_dtls",
+      "value": "启动 DTLS"
+    },
+    {
+      "name": "set_enable_dtls_desc",
+      "value": "启用 DTLS 以加速数据传输。"
     }
   ]
 }

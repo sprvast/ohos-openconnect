@@ -125,12 +125,56 @@
       "value": "Got It"
     },
     {
-      "name": "app_title",
-      "value": "OpenConnect VPN"
+      "name": "input_error_title",
+      "value": "Connection failed, please check your input"
     },
     {
-      "name": "about_app_desc",
-      "value": "HarmonyOS secure remote access client"
+      "name": "groups_failed_title",
+      "value": "Failed to load user groups"
+    },
+    {
+      "name": "groups_failed_msg",
+      "value": "Could not load user groups from the server. Please check that the server address is correct and the network is reachable."
+    },
+    {
+      "name": "url_scheme_title",
+      "value": "Invalid server address"
+    },
+    {
+      "name": "url_scheme_msg",
+      "value": "The server address must start with https://, e.g. https://vpn.example.com"
+    },
+    {
+      "name": "cert_reject_title",
+      "value": "Connection rejected: untrusted server certificate"
+    },
+    {
+      "name": "cert_reject_hint",
+      "value": "\"Block connections to untrusted servers\" is enabled. The server certificate has issues, so the connection was terminated."
+    },
+    {
+      "name": "cert_reject_go_settings",
+      "value": "Go to Settings"
+    },
+    {
+      "name": "cert_reject_reason_expired",
+      "value": "The certificate has expired and no longer matches the current time."
+    },
+    {
+      "name": "cert_reject_reason_hostname",
+      "value": "The certificate does not match the server name (domain)."
+    },
+    {
+      "name": "cert_reject_reason_untrusted",
+      "value": "The certificate comes from an untrusted source (self-signed or untrusted issuer)."
+    },
+    {
+      "name": "cert_reject_reason_other",
+      "value": "The server certificate is untrusted or failed validation."
+    },
+    {
+      "name": "app_title",
+      "value": "OpenConnect VPN"
     },
     {
       "name": "about_apply_info",
@@ -151,6 +195,38 @@
     {
       "name": "about_opensource",
       "value": "Open Source & License"
+    },
+    {
+      "name": "about_os_license_label",
+      "value": "License: "
+    },
+    {
+      "name": "about_os_self_name",
+      "value": "ohos-openconnect (this project)"
+    },
+    {
+      "name": "about_os_self_license",
+      "value": "LGPL-2.1-only"
+    },
+    {
+      "name": "about_os_self_home",
+      "value": "Repository: https://github.com/sprvast/ohos-openconnect"
+    },
+    {
+      "name": "about_os_self_mirror",
+      "value": "Mirror: https://gitee.com/sprvast/ohos-openconnect"
+    },
+    {
+      "name": "about_os_up_name",
+      "value": "OpenConnect (upstream project)"
+    },
+    {
+      "name": "about_os_up_license",
+      "value": "LGPL-2.1-only"
+    },
+    {
+      "name": "about_os_up_home",
+      "value": "Official: https://gitlab.com/openconnect/openconnect"
     },
     {
       "name": "about_privacy",
@@ -183,6 +259,38 @@
     {
       "name": "st_kicked",
       "value": "Disconnected (session terminated by server)"
+    },
+    {
+      "name": "settings_title",
+      "value": "Settings"
+    },
+    {
+      "name": "settings_open",
+      "value": "Settings"
+    },
+    {
+      "name": "set_block_untrusted",
+      "value": "Block connections to untrusted servers"
+    },
+    {
+      "name": "set_block_untrusted_desc",
+      "value": "Do not allow connections to servers using untrusted certificates."
+    },
+    {
+      "name": "set_debug_mode",
+      "value": "Debug mode"
+    },
+    {
+      "name": "set_debug_mode_desc",
+      "value": "When enabled, log output is shown on the main page for troubleshooting."
+    },
+    {
+      "name": "set_enable_dtls",
+      "value": "Enable DTLS"
+    },
+    {
+      "name": "set_enable_dtls_desc",
+      "value": "Enable DTLS to accelerate data transfer."
     }
   ]
 }

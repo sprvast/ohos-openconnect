@@ -13,6 +13,7 @@ import { taskpool } from '@kit.ArkTS';
 import { OpenConnect } from '../napi/OpenConnect';
 import { VpnManager, IpInfo } from '../napi/VpnManager';
 import { vpnExtension } from '@kit.NetworkKit';
+import { connection as netConnection } from '@kit.NetworkKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { common } from '@kit.AbilityKit';
 import type Want from '@ohos.app.ability.Want';
@@ -40,10 +41,6 @@ struct AboutDialog {
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.text_title'))
-        Text(this.res($r('app.string.about_app_desc')))
-          .fontSize(13)
-          .fontColor($r('app.color.text_secondary'))
-          .margin({ top: 6 })
       }
       .width('100%')
       .alignItems(HorizontalAlign.Center)
@@ -52,15 +49,25 @@ struct AboutDialog {
       Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
 
       this.sectionTitle(this.res($r('app.string.about_apply_info')))
-      this.aboutRow(this.res($r('app.string.about_version')), '1.0.3')
+      this.aboutRow(this.res($r('app.string.about_version')), '1.0.5')
       this.aboutRow(this.res($r('app.string.about_based_on')), 'OpenConnect v9.21')
       this.aboutRow(this.res($r('app.string.about_backend')), 'OpenConnect / AnyConnect')
 
       Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
 
       this.sectionTitle(this.res($r('app.string.about_opensource')))
-      this.aboutRow('ohos-openconnect', 'GPL-2.0-or-later')
-      this.aboutRow('OpenConnect', 'LGPL-2.1-only')
+      this.osBlock(
+        this.res($r('app.string.about_os_self_name')),
+        this.res($r('app.string.about_os_self_license')),
+        this.res($r('app.string.about_os_self_home')),
+        this.res($r('app.string.about_os_self_mirror'))
+      )
+      this.osBlock(
+        this.res($r('app.string.about_os_up_name')),
+        this.res($r('app.string.about_os_up_license')),
+        this.res($r('app.string.about_os_up_home')),
+        ''
+      )
 
       Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
 
@@ -108,6 +115,121 @@ struct AboutDialog {
     .width('100%')
     .height(40)
     .padding({ left: 2, right: 2 })
+  }
+
+  /** “开源与许可”条目块：展示项目名称、协议版本与官方/开源地址（多行居左） */
+  @Builder
+  osBlock(name: string, license: string, home: string, mirror: string) {
+    Column() {
+      Text(name)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_primary'))
+        .width('100%')
+        .textAlign(TextAlign.Start)
+      Text(this.res($r('app.string.about_os_license_label')) + ' ' + license)
+        .fontSize(12)
+        .fontColor($r('app.color.text_gray8'))
+        .width('100%')
+        .textAlign(TextAlign.Start)
+        .margin({ top: 4 })
+      Text(home)
+        .fontSize(12)
+        .fontColor($r('app.color.text_link'))
+        .width('100%')
+        .textAlign(TextAlign.Start)
+        .copyOption(CopyOptions.LocalDevice)
+        .margin({ top: 2 })
+      if (mirror && mirror.length > 0) {
+        Text(mirror)
+          .fontSize(12)
+          .fontColor($r('app.color.text_link'))
+          .width('100%')
+          .textAlign(TextAlign.Start)
+          .copyOption(CopyOptions.LocalDevice)
+          .margin({ top: 2 })
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: 2, right: 2, top: 8, bottom: 8 })
+  }
+}
+
+/** “设置”弹窗：仿设置页排版，提供全局功能开关（切换后回调主页实时持久化） */
+@CustomDialog
+struct SettingsDialog {
+  controller?: CustomDialogController;
+  blockUntrusted: boolean = true;
+  debugMode: boolean = false;
+  enableDtls: boolean = false;
+  onBlockUntrusted?: (v: boolean) => void;
+  onDebugMode?: (v: boolean) => void;
+  onEnableDtls?: (v: boolean) => void;
+
+  private res(id: Resource): string {
+    const ctx = this.getUIContext().getHostContext() as common.Context;
+    return ctx.resourceManager.getStringSync(id);
+  }
+
+  build() {
+    Column() {
+      Text(this.res($r('app.string.settings_title')))
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_title'))
+        .margin({ top: 20, bottom: 12 })
+
+      this.settingRow(this.res($r('app.string.set_block_untrusted')),
+        this.res($r('app.string.set_block_untrusted_desc')),
+        this.blockUntrusted, (v: boolean) => this.onBlockUntrusted?.(v))
+      this.settingRow(this.res($r('app.string.set_debug_mode')),
+        this.res($r('app.string.set_debug_mode_desc')),
+        this.debugMode, (v: boolean) => this.onDebugMode?.(v))
+      this.settingRow(this.res($r('app.string.set_enable_dtls')),
+        this.res($r('app.string.set_enable_dtls_desc')),
+        this.enableDtls, (v: boolean) => this.onEnableDtls?.(v))
+
+      Button(this.res($r('app.string.got_it')))
+        .fontSize(14)
+        .height(40)
+        .width('100%')
+        .margin({ top: 16, bottom: 8 })
+        .onClick(() => {
+          this.controller?.close();
+        })
+    }
+    .padding({ left: 16, right: 16 })
+  }
+
+  /** 一条设置项：左侧标题+说明文字，右侧开关 */
+  @Builder
+  settingRow(title: string, desc: string, checked: boolean, onChange: (v: boolean) => void) {
+    Column() {
+      Row() {
+        Column() {
+          Text(title)
+            .fontSize(14)
+            .fontColor($r('app.color.text_primary'))
+            .width('100%')
+            .textAlign(TextAlign.Start)
+          Text(desc)
+            .fontSize(11)
+            .fontColor($r('app.color.text_gray8'))
+            .width('100%')
+            .textAlign(TextAlign.Start)
+            .margin({ top: 3 })
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+        Toggle({ type: ToggleType.Switch, isOn: checked })
+          .onChange((v: boolean) => onChange(v))
+      }
+      .width('100%')
+      .padding({ top: 10, bottom: 10 })
+      Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
+    }
+    .width('100%')
   }
 }
 
@@ -277,6 +399,9 @@ struct ServerSelectDialog {
 /** 后台探测服务器可选用户组：发起一次认证，回调收集 group 列表后返回（忽略最终结果） */
 @Concurrent
 function ocProbeGroups(url: string): string {
+  // 组探测仅用于拉取服务器可选用户组，不建立真实连接；且 AnyLink/自签名服务器
+  // 在校验开启时握手会被拒。因此探测前临时关闭证书校验，避免“获取不到组”。
+  OpenConnect.setTrustUntrustedServer(false);
   OpenConnect.newSession();
   OpenConnect.parseUrl(url);
   // 探测用户组时未填用户名/密码，认证本身必返回失败码，因此不能以 obtainCookie()
@@ -411,6 +536,12 @@ struct Index {
   @State password: string = '';
   @State authGroup: string = '';
   @State groupOptions: string[] = [];
+  /** 设置项：阻止与不受信任的服务器连接（默认开启） */
+  @State blockUntrusted: boolean = true;
+  /** 设置项：调试模式（默认关闭）——开启后主页面才显示日志输出 */
+  @State debugMode: boolean = false;
+  /** 设置项：启动 DTLS（默认关闭） */
+  @State enableDtls: boolean = false;
   @State statusText: string = '未连接';
   @State isConnecting: boolean = false;
   @State isConnected: boolean = false;
@@ -434,6 +565,8 @@ struct Index {
   private addCtrl?: CustomDialogController;
   /** “选择服务器地址”弹窗控制器 */
   private selCtrl?: CustomDialogController;
+  /** “设置”弹窗控制器（动态传入各开关当前值，切换后实时持久化） */
+  private settingsCtrl?: CustomDialogController;
 
   /** 连接建立成功的时间戳（毫秒），用于计算并显示连接时长 */
   private _connectStartTime: number = 0;
@@ -452,6 +585,8 @@ struct Index {
     }
     // 恢复记住的服务器地址/用户名/用户组/密码
     this.restoreLogin();
+    // 恢复设置项（调试模式、证书校验、局域网、DTLS）
+    this.restoreSettings();
   }
 
   /** 启动时恢复上次记住的连接信息：地址/用户名/用户组/密码（preferences 自动回填） */
@@ -517,6 +652,56 @@ struct Index {
   /** 弹出“关于 OpenConnect”弹窗（仿设置页排版：应用信息/开源许可/隐私说明） */
   private showAboutDialog(): void {
     this.aboutCtrl.open();
+  }
+
+  /** 打开“设置”弹窗：每次都传入各开关当前值，切换后由回调实时持久化 */
+  private showSettingsDialog(): void {
+    this.settingsCtrl = new CustomDialogController({
+      builder: SettingsDialog({
+        blockUntrusted: this.blockUntrusted,
+        debugMode: this.debugMode,
+        enableDtls: this.enableDtls,
+        onBlockUntrusted: (v: boolean) => {
+          this.blockUntrusted = v;
+          this.saveSettings();
+        },
+        onDebugMode: (v: boolean) => {
+          this.debugMode = v;
+          this.saveSettings();
+        },
+        onEnableDtls: (v: boolean) => {
+          this.enableDtls = v;
+          this.saveSettings();
+        }
+      }),
+      autoCancel: true,
+      alignment: DialogAlignment.Center
+    });
+    this.settingsCtrl.open();
+  }
+
+  /** 持久化全部设置项到 preferences */
+  private async saveSettings(): Promise<void> {
+    try {
+      const context = this.getUIContext().getHostContext() as common.Context;
+      await prefPut(context, 'set_block_untrusted', this.blockUntrusted ? '1' : '0');
+      await prefPut(context, 'set_debug_mode', this.debugMode ? '1' : '0');
+      await prefPut(context, 'set_enable_dtls', this.enableDtls ? '1' : '0');
+    } catch (e) {
+      // 忽略：保存失败不影响使用
+    }
+  }
+
+  /** 启动/连接时恢复设置项（读不到用默认值） */
+  private async restoreSettings(): Promise<void> {
+    try {
+      const context = this.getUIContext().getHostContext() as common.Context;
+      this.blockUntrusted = (await prefGet(context, 'set_block_untrusted', '1')) === '1';
+      this.debugMode = (await prefGet(context, 'set_debug_mode', '0')) === '1';
+      this.enableDtls = (await prefGet(context, 'set_enable_dtls', '0')) === '1';
+    } catch (e) {
+      // 使用默认值
+    }
   }
 
   /** 服务器下拉选项：已保存历史地址 + 末尾“+ 添加服务器地址” */
@@ -633,6 +818,10 @@ struct Index {
   }
 
   private appendLog(msg: string): void {
+    // 调试模式关闭时不进行日志输出（UI 日志框不累积）
+    if (!this.debugMode) {
+      return;
+    }
     const d = new Date();
     const hh = (d.getHours() < 10 ? '0' : '') + d.getHours();
     const mm = (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
@@ -646,6 +835,8 @@ struct Index {
     if (this.isConnecting || this.isConnected) {
       return;
     }
+    // 新连接开始：清除可能的断网自动重连监听残留
+    this.cancelAutoReconnect();
     // 本次新连接：重置数据面状态
     this._hadDataPlane = false;
     this.connectedDuration = '';
@@ -666,6 +857,12 @@ struct Index {
     // 启动扩展前校验必填参数，避免缺失时扩展进程报“参数缺失”这种隐晦失败
     if (!sUrl || sUrl.trim().length === 0) {
       this.appendLog('请填写服务器地址');
+      this.isConnecting = false;
+      return;
+    }
+    if (!sUrl.trim().toLowerCase().startsWith('https://')) {
+      this.appendLog('服务器地址必须以 https:// 开头');
+      this.showUrlSchemeDialog();
       this.isConnecting = false;
       return;
     }
@@ -709,7 +906,10 @@ struct Index {
           'serverUrl=' + sUrl + '\n' +
           'username=' + sUser + '\n' +
           'password=' + sPass + '\n' +
-          'authGroup=' + sGroup + '\n';
+          'authGroup=' + sGroup + '\n' +
+          'blockUntrusted=' + (this.blockUntrusted ? '1' : '0') + '\n' +
+          'enableDtls=' + (this.enableDtls ? '1' : '0') + '\n' +
+          'debugMode=' + (this.debugMode ? '1' : '0') + '\n';
         // CREATE|TRUNC：文件不存在则创建，已存在则清空重写，一步完成旧值覆盖
         const file = fileIo.openSync(cfgPath,
           fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
@@ -843,6 +1043,11 @@ struct Index {
             this.statusText = '连接失败';
             const reason = this.classifyAuthError(content);
             this.appendLog(reason.length > 0 ? reason : 'VPN 连接失败（认证未通过），请检查账号、密码、用户组及服务器地址');
+            // 证书校验被拒绝（“阻止不受信任服务器”开启）：按原因弹窗提醒并引导去设置
+            this.checkCertReject(content);
+            // 输入类错误（账号/密码/用户组/服务器地址）必弹窗提示用户检查：
+            // reason 识别不出具体类别时，附 openconnect 原始日志（AUTHLOG）兜底展示。
+            this.showInputErrorDialog(reason, content);
             // 服务器短时风控提示（不禁用按钮，仅引导等待，避免连续快速重试延长限制）
             if (reason.indexOf('账号或密码') >= 0 || content.indexOf('用户名或密码错误') >= 0) {
               this.appendLog('提示：如账号密码确认无误仍频繁失败，多为服务器暂时性限制，请等待 1~2 分钟后再试，不要连续快速重试。');
@@ -880,7 +1085,8 @@ struct Index {
         // 停止失败不阻断：下次连接若仍异常再排查
       }
     }
-    // connect() 结束：不再自动重连（已取消自动重连功能，失败后由用户手动重新连接）
+    // connect() 结束：认证类失败不自动重连（避免触发服务器限流），交由用户手动重试。
+    // 仅在“隧道成功建立后终端网络断开、网络恢复”时由 setupAutoReconnect 自动重连。
   }
 
   /** 读取扩展进程写入的状态文件全部内容 */
@@ -964,7 +1170,8 @@ struct Index {
 
   /** 数据面结束后统一收尾：识别被踢原因并刷新状态 */
   private afterDataPlaneClosed(content: string): void {
-    if (this.isKickedByServer(content)) {
+    const kicked = this.isKickedByServer(content);
+    if (kicked) {
       this.sessionKicked = true;
       this.statusText = '已断开（会话被服务器终止）';
       this.appendLog('会话被服务器终止（Session 过期或被踢下线）');
@@ -974,6 +1181,47 @@ struct Index {
       this.appendLog('VPN 连接已断开');
     }
     releaseRunningLock();
+    // 断网自动重连：曾成功建立隧道（_hadDataPlane）、非用户主动断开、非被服务器踢下线，
+    // 大概率是终端网络中断导致数据面结束。监听网络恢复后自动重新连接。
+    if (this._hadDataPlane && !this._disconnectRequested && !kicked) {
+      this.setupAutoReconnect();
+    }
+  }
+
+  /** 断网自动重连监听：注册网络监听，等网络恢复后自动重新连接（防重复注册） */
+  private setupAutoReconnect(): void {
+    if (this._waitingReconnect) {
+      return;
+    }
+    this._waitingReconnect = true;
+    this.appendLog('终端网络中断，已断开；等待网络恢复后自动重连...');
+    try {
+      this._reconnectNetConn = netConnection.createNetConnection();
+      this._reconnectNetConn.on('netAvailable', () => {
+        this.cancelAutoReconnect();
+        this.appendLog('网络已恢复，正在自动重连...');
+        this.connect();
+      });
+      this._reconnectNetConn.register(() => {
+      });
+    } catch (e) {
+      this._waitingReconnect = false;
+      this.appendLog('自动重连网络监听初始化失败，请手动重试连接');
+    }
+  }
+
+  /** 取消断网自动重连监听（手动断开/已重连/页面销毁时调用） */
+  private cancelAutoReconnect(): void {
+    this._waitingReconnect = false;
+    try {
+      if (this._reconnectNetConn) {
+        this._reconnectNetConn.unregister(() => {
+        });
+        this._reconnectNetConn = undefined;
+      }
+    } catch (e) {
+      // 忽略解除失败
+    }
   }
 
   /** 记录最近一次显示过的状态行，避免重复刷屏 */
@@ -984,6 +1232,12 @@ struct Index {
   private _bannerShown = false;
   /** 用户是否已发起手动断开（断开后监控循环不再改写状态，交由 disconnect 收尾） */
   private _disconnectRequested = false;
+  /** 拉取用户组的请求序号：每次发起递增，旧任务返回时若序号已不是最新则结果作废（取代上一次请求） */
+  private _fetchGroupsSeq = 0;
+  /** 是否正在等待断网自动重连（网络恢复监听已就绪，防重复注册） */
+  private _waitingReconnect = false;
+  /** 网络状态监听对象（断网后注册，等网络恢复触发自动重连） */
+  private _reconnectNetConn?: netConnection.NetConnection;
 
   /** 判断状态文件是否超过 15s 无更新（扩展进程心跳停止，疑似进程被系统回收）。
    *  Stat.mtime 单位是秒（Date.now() 为毫秒），需先换算。 */
@@ -1022,6 +1276,70 @@ struct Index {
     });
   }
 
+  /** 检测状态文件中扩展回写的证书拒绝原因（CERT_REJECT=...）：
+   *  发现后按原因分类弹窗提醒，并提供“前往设置”打开设置弹窗。 */
+  private checkCertReject(content: string): void {
+    const m = /CERT_REJECT=([^\n]*)/.exec(content);
+    if (!m || !m[1]) {
+      return;
+    }
+    const raw = m[1].trim();
+    if (!raw) {
+      return;
+    }
+    // 按 openconnect 证书校验失败原因的关键词归类，给出具体中文（多语言）提示
+    let detailRes: Resource = $r('app.string.cert_reject_reason_other');
+    const lower = raw.toLowerCase();
+    if (/expired|not yet valid|not yet.*valid|validity|过期|无效/i.test(lower)) {
+      detailRes = $r('app.string.cert_reject_reason_expired');
+    } else if (/hostname|name mismatch|host name|mismatch.*host|cert.*server|doesn't match|dns/i.test(lower)) {
+      detailRes = $r('app.string.cert_reject_reason_hostname');
+    } else if (/untrusted|self[- ]signed|issuer|signer|certificate chain|unknown.*authority|certificate.*authority|not trusted|no.*trust/i.test(lower)) {
+      detailRes = $r('app.string.cert_reject_reason_untrusted');
+    }
+    this.appendLog('证书校验失败：' + raw);
+    promptAction.showDialog({
+      title: this.res($r('app.string.cert_reject_title')),
+      message: this.res($r('app.string.cert_reject_hint')) + '\n' + this.res(detailRes),
+      buttons: [
+        { text: this.res($r('app.string.got_it')), color: '#999999' },
+        { text: this.res($r('app.string.cert_reject_go_settings')), color: '#0a59f7', primary: true }
+      ]
+    }).then((val: promptAction.ShowDialogSuccessResponse) => {
+      // 点击“前往设置”则打开设置弹窗，便于用户关闭证书校验
+      if (val && val.index === 1) {
+        this.showSettingsDialog();
+        this.appendLog('用户已前往设置');
+      }
+    }).catch(() => {
+      this.appendLog('证书提醒弹窗被关闭');
+    });
+  }
+
+  /** 输入类错误弹窗：连接失败时提醒用户检查服务器地址/用户名/密码/用户组等输入项 */
+  private showInputErrorDialog(reason: string, content?: string): void {
+    // 证书校验失败已由 checkCertReject 单独弹窗且会更具体，这里仅处理登录/连接类输入错误
+    if (reason.indexOf('证书') >= 0) {
+      return;
+    }
+    // reason 识别不出具体类别时，从 openconnect 原始日志（AUTHLOG=...）提取末条兜底展示，
+    // 让用户能看到真实报错并据此排查账号/密码/组/地址。
+    let msg = reason;
+    if (!msg || msg.length === 0) {
+      const m = /AUTHLOG=([^\n]*)/.exec(content || '');
+      msg = m && m[1] && m[1].trim().length > 0
+        ? '认证失败，服务器返回：' + m[1].trim()
+        : '连接失败，请检查服务器地址、用户名、密码及用户组是否正确。';
+    }
+    promptAction.showDialog({
+      title: this.res($r('app.string.input_error_title')),
+      message: msg,
+      buttons: [{ text: this.res($r('app.string.got_it')), color: '#0a59f7', primary: true }]
+    }).then(() => {
+    }).catch(() => {
+    });
+  }
+
   /** 点击历史地址标签：回填输入框并自动拉取用户组 */
   private useServerHistory(addr: string): void {
     this.serverUrl = addr;
@@ -1032,8 +1350,14 @@ struct Index {
   /** 新增地址确定：加入历史并回填、拉取用户组 */
   private async confirmNewServer(): Promise<void> {
     const addr = this.newServerInput.trim();
+    // 强制校验服务器地址必须以 https:// 开头
     if (!addr) {
       this.addingServer = false;
+      return;
+    }
+    if (!addr.toLowerCase().startsWith('https://')) {
+      this.appendLog('服务器地址必须以 https:// 开头');
+      this.showUrlSchemeDialog();
       return;
     }
     const next = pushServerHistory(this.serverHistory, addr, 10);
@@ -1057,10 +1381,27 @@ struct Index {
       this.appendLog('请先填写服务器地址');
       return;
     }
+    // 请求序号取代机制：每次发起自增。若上次请求仍在进行，其返回时检测到序号已不是
+    // 最新，即视为“已被本次新请求终止/取代”，其日志与结果一律作废，最终只保留最新请求
+    // 的结果。等效于“终止上次请求、重新请求”，不会出现旧结果覆盖新结果或日志倒序。
+    const seq = ++this._fetchGroupsSeq;
     this.appendLog('正在从服务器拉取用户组...');
+    // 请求超时控制：1 秒内未返回即视为失败（服务器地址错误/不可达），快速提示用户。
+    const TIMEOUT_MS = 1000;
+    let timer: number | undefined = undefined;
+    const waiter = new Promise<string>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('probe_timeout')), TIMEOUT_MS);
+    });
     try {
       const task = new taskpool.Task(ocProbeGroups, this.serverUrl);
-      const groups: string = await taskpool.execute(task) as string;
+      const groups: string = await Promise.race([
+        taskpool.execute(task) as Promise<string>,
+        waiter
+      ]) as string;
+      // 若期间又有更新的请求发起，本结果作废（本次请求已被取代）
+      if (seq !== this._fetchGroupsSeq) {
+        return;
+      }
       const list = groups.split(',').map((g) => g.trim()).filter((g) => g.length > 0);
       this.groupOptions = list;
       if (list.length > 0) {
@@ -1073,13 +1414,52 @@ struct Index {
       }
     } catch (e) {
       // 获取组失败：初始化用户组输入框（清空选项与当前选中值，恢复默认占位）
+      // 仅当本次仍是最新请求时才处理结果与提示，避免被取代的旧任务污染界面
+      if (seq !== this._fetchGroupsSeq) {
+        return;
+      }
+      const msg = (e as Error).message;
       this.groupOptions = [];
       this.authGroup = '';
-      this.appendLog('获取用户组失败，请检查服务器地址是否正确');
+      if (msg === 'probe_timeout') {
+        this.appendLog('获取用户组超时，请检查服务器地址是否正确、网络是否可达');
+      } else {
+        this.appendLog('获取用户组失败，请检查服务器地址是否正确');
+      }
+      // 组获取失败弹窗：提示用户检查服务器地址
+      this.showGroupsFailedDialog();
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
     }
   }
 
+  /** 组获取失败弹窗：提示用户检查服务器地址 */
+  private showGroupsFailedDialog(): void {
+    promptAction.showDialog({
+      title: this.res($r('app.string.groups_failed_title')),
+      message: this.res($r('app.string.groups_failed_msg')),
+      buttons: [{ text: this.res($r('app.string.got_it')), color: '#0a59f7', primary: true }]
+    }).then(() => {
+    }).catch(() => {
+    });
+  }
+
+  /** 服务器地址必须以 https:// 开头——强制校验弹窗 */
+  private showUrlSchemeDialog(): void {
+    promptAction.showDialog({
+      title: this.res($r('app.string.url_scheme_title')),
+      message: this.res($r('app.string.url_scheme_msg')),
+      buttons: [{ text: this.res($r('app.string.got_it')), color: '#0a59f7', primary: true }]
+    }).then(() => {
+    }).catch(() => {
+    });
+  }
+
   async disconnect(): Promise<void> {
+    // 手动断开：取消断网自动重连等待，避免网络恢复时误触发重连
+    this.cancelAutoReconnect();
     this._disconnectRequested = true; // 让 connect() 的持续监控循环退出，避免其再改写状态
     this.sessionKicked = false;
     this.appendLog('正在断开，通知 VPN 扩展优雅退出...');
@@ -1193,6 +1573,8 @@ struct Index {
           }
         })
       TextInput({ placeholder: $r('app.string.username'), text: this.username })
+        .type(InputType.USER_NAME)
+        .enableAutoFill(true)
         .fontSize(15)
         .maxLength(256)
         .height(48)
@@ -1201,6 +1583,7 @@ struct Index {
         .onChange((v: string) => this.username = v)
       TextInput({ placeholder: $r('app.string.password'), text: this.password })
         .type(InputType.Password)
+        .enableAutoFill(true)
         .fontSize(15)
         .maxLength(256)
         .height(48)
@@ -1208,25 +1591,25 @@ struct Index {
         .backgroundColor($r('app.color.textinput_bg'))
         .onChange((v: string) => this.password = v)
 
-      Row({ space: 16 }) {
-        Button(this.isConnected || this.isConnecting
-          ? this.res($r('app.string.disconnect')) : this.res($r('app.string.connect')))
-          .fontSize(14)
-          .height(40)
-          .onClick(() => {
-            if (this.isConnected || this.isConnecting) {
-              this.disconnect();
-            } else {
-              this.connect();
-            }
-          })
-      }.margin({ top: 8 })
-
-      Button(this.res($r('app.string.copy_logs')))
-        .onClick(() => this.copyLog())
-        .margin({ top: 4 })
+      // 设置按钮在上、连接按钮在下（设置与连接互换位置）
+      Button(this.res($r('app.string.settings_open')))
         .fontSize(14)
         .height(40)
+        .onClick(() => this.showSettingsDialog())
+        .margin({ top: 8 })
+
+      Button(this.isConnected || this.isConnecting
+        ? this.res($r('app.string.disconnect')) : this.res($r('app.string.connect')))
+        .fontSize(14)
+        .height(40)
+        .onClick(() => {
+          if (this.isConnected || this.isConnecting) {
+            this.disconnect();
+          } else {
+            this.connect();
+          }
+        })
+        .margin({ top: 4 })
 
       // 状态与连接时长合并为一行显示
       Text(this.res($r('app.string.status')) + this.statusLocale()
@@ -1234,18 +1617,28 @@ struct Index {
         .fontSize(16)
         .fontColor(this.isConnected ? $r('app.color.connected') : $r('app.color.disconnected'))
 
-      Scroll() {
-        Text(this.logText)
-          .fontSize(12)
-          .fontColor($r('app.color.text_primary'))
-          .width('100%')
-          .textAlign(TextAlign.Start)
+      // 日志输出仅调试模式开启时显示；日志框支持长按选中、全选、复制
+      if (this.debugMode) {
+        Scroll() {
+          Text(this.logText)
+            .fontSize(12)
+            .fontColor($r('app.color.text_primary'))
+            .width('100%')
+            .textAlign(TextAlign.Start)
+            .copyOption(CopyOptions.LocalDevice)
+            .onCopy((value: string) => {
+              this.appendLog('日志已复制，长度=' + value.length);
+            })
+        }
+        .layoutWeight(1)
+        .backgroundColor($r('app.color.log_bg'))
+        .borderRadius(8)
+        .padding(8)
+        .margin({ top: 8, bottom: 8 })
+      } else {
+        // 非调试模式：占据日志框空间的下方留白，保证布局稳定
+        Blank().layoutWeight(1).margin({ top: 8, bottom: 8 })
       }
-      .layoutWeight(1)
-      .backgroundColor($r('app.color.log_bg'))
-      .borderRadius(8)
-      .padding(8)
-      .margin({ top: 8, bottom: 8 })
       // 页面最底部：进入“关于 OpenConnect”弹窗
       Text(this.res($r('app.string.about_title')))
         .fontSize(12)

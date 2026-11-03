@@ -1,6 +1,6 @@
 # ohos-openconnect
 
-基于开源项目 **OpenConnect**（GPL-2.0-or-later）移植到 **HarmonyOS NEXT** 的企业远程办公 **SSL VPN 客户端**。
+基于开源项目 **OpenConnect**（LGPL-2.1-only）移植到 **HarmonyOS NEXT** 的企业远程办公 **SSL VPN 客户端**。
 本项目沿用了 OpenConnect 的开放协议与代码实现，并针对鸿蒙沙箱、三方 VPN 能力做了平台适配。
 
 > ⚠️ **目前仅适配 AnyLink 网关**。项目以企业远程办公场景为目标。
@@ -45,7 +45,7 @@ libopenconnect（控制面 TLS/HTTP/认证 + 数据面 CSTP/DTLS）
 
 #### 开源协议
 
-本项目基于 **OpenConnect**（GPL-2.0-or-later）衍生开发，整体以 **GPL-2.0-or-later** 许可对外发布。
+本项目基于 **OpenConnect**（上游库 LGPL-2.1-only）衍生开发，本项目整体以 **LGPL-2.1-only** 许可对外发布。
 OpenConnect 原始项目版权归其作者所有，请遵守相应的开源许可条款。
 
 #### 侵权声明

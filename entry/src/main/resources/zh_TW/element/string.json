@@ -125,12 +125,56 @@
       "value": "我知道了"
     },
     {
-      "name": "app_title",
-      "value": "OpenConnect VPN"
+      "name": "input_error_title",
+      "value": "連線失敗，請檢查輸入"
     },
     {
-      "name": "about_app_desc",
-      "value": "HarmonyOS 安全遠端存取用戶端"
+      "name": "groups_failed_title",
+      "value": "取得使用者群組失敗"
+    },
+    {
+      "name": "groups_failed_msg",
+      "value": "無法從伺服器取得使用者群組，請檢查伺服器位址是否正確、網路是否可達。"
+    },
+    {
+      "name": "url_scheme_title",
+      "value": "伺服器位址格式錯誤"
+    },
+    {
+      "name": "url_scheme_msg",
+      "value": "伺服器位址必須以 https:// 開頭，例如：https://vpn.example.com"
+    },
+    {
+      "name": "cert_reject_title",
+      "value": "連線被拒：伺服器憑證不受信任"
+    },
+    {
+      "name": "cert_reject_hint",
+      "value": "目前開啟「阻止與不受信任的伺服器連線」，偵測到伺服器憑證有問題，連線已終止。"
+    },
+    {
+      "name": "cert_reject_go_settings",
+      "value": "前往設定"
+    },
+    {
+      "name": "cert_reject_reason_expired",
+      "value": "憑證已過期，與目前時間不匹配。"
+    },
+    {
+      "name": "cert_reject_reason_hostname",
+      "value": "憑證與伺服器名稱（網域）不匹配。"
+    },
+    {
+      "name": "cert_reject_reason_untrusted",
+      "value": "憑證來自不受信任的來源（自簽或不受信任的簽發機構）。"
+    },
+    {
+      "name": "cert_reject_reason_other",
+      "value": "伺服器憑證不受信任或驗證失敗。"
+    },
+    {
+      "name": "app_title",
+      "value": "OpenConnect VPN"
     },
     {
       "name": "about_apply_info",
@@ -151,6 +195,38 @@
     {
       "name": "about_opensource",
       "value": "開放原始碼與授權"
+    },
+    {
+      "name": "about_os_license_label",
+      "value": "開源授權："
+    },
+    {
+      "name": "about_os_self_name",
+      "value": "ohos-openconnect（本專案）"
+    },
+    {
+      "name": "about_os_self_license",
+      "value": "LGPL-2.1-only"
+    },
+    {
+      "name": "about_os_self_home",
+      "value": "開源位址：https://github.com/sprvast/ohos-openconnect"
+    },
+    {
+      "name": "about_os_self_mirror",
+      "value": "鏡像：https://gitee.com/sprvast/ohos-openconnect"
+    },
+    {
+      "name": "about_os_up_name",
+      "value": "OpenConnect（上游專案）"
+    },
+    {
+      "name": "about_os_up_license",
+      "value": "LGPL-2.1-only"
+    },
+    {
+      "name": "about_os_up_home",
+      "value": "官方位址：https://gitlab.com/openconnect/openconnect"
     },
     {
       "name": "about_privacy",
@@ -183,6 +259,38 @@
     {
       "name": "st_kicked",
       "value": "已中斷（工作階段被伺服器終止）"
+    },
+    {
+      "name": "settings_title",
+      "value": "設定"
+    },
+    {
+      "name": "settings_open",
+      "value": "設定"
+    },
+    {
+      "name": "set_block_untrusted",
+      "value": "阻止與不受信任的伺服器連線"
+    },
+    {
+      "name": "set_block_untrusted_desc",
+      "value": "不允許連線到使用不受信任憑證的伺服器。"
+    },
+    {
+      "name": "set_debug_mode",
+      "value": "偵錯模式"
+    },
+    {
+      "name": "set_debug_mode_desc",
+      "value": "開啟後主頁面顯示日誌輸出，便於排查問題。"
+    },
+    {
+      "name": "set_enable_dtls",
+      "value": "啟動 DTLS"
+    },
+    {
+      "name": "set_enable_dtls_desc",
+      "value": "啟用 DTLS 以加速資料傳輸。"
     }
   ]
 }

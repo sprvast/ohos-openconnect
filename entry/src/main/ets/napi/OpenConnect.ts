@@ -10,6 +10,8 @@ interface OpenConnectNative {
   getVersion(): string;
   initSsl(): void;
   newSession(): number;
+  setTrustUntrustedServer(trust: boolean): void;
+  getCertRejectReason(): string;
   parseUrl(url: string): number;
   setAuth(username: string, password: string): number;
   setAuthGroup(group: string): number;
@@ -46,6 +48,8 @@ export const OpenConnect: {
   initOpenConnect(): void;
   version(): string;
   newSession(): number;
+  setTrustUntrustedServer(trust: boolean): void;
+  getCertRejectReason(): string;
   parseUrl(url: string): number;
   setAuth(user: string, pass: string): number;
   setAuthGroup(group: string): number;
@@ -73,6 +77,12 @@ export const OpenConnect: {
   },
   newSession(): number {
     return getNative().newSession();
+  },
+  setTrustUntrustedServer(trust: boolean): void {
+    getNative().setTrustUntrustedServer(trust);
+  },
+  getCertRejectReason(): string {
+    return getNative().getCertRejectReason();
   },
   parseUrl(url: string): number {
     return getNative().parseUrl(url);

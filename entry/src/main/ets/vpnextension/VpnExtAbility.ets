@@ -70,6 +70,13 @@ let gConnUser = '';
 let gConnPassLen = 0;
 let gConnGroup = '';
 
+/** 本次连接设置项：是否阻止与不受信任的服务器连接（true=严格校验证书） */
+let gBlockUntrusted = true;
+/** 本次连接设置项：是否启用 DTLS 加速（true=data 面启动 DTLS） */
+let gEnableDtls = false;
+/** 本次连接设置项：是否调试模式（true=状态文件尽量输出全量原始日志） */
+let gDebugMode = false;
+
 /**
  * 扩展进程后台运行锁。
  * runningLock 是 per-process 的 CPU 锁：主进程(Index.ets)持有的锁保护不了本扩展进程。
@@ -123,10 +130,13 @@ function appendStatus(msg: string, path: string): void {
   }
 }
 
-/** 阶段 A：后台认证 + CSTP 协商（阻塞，taskpool worker） */
+/** 阶段 A：后台认证 + CSTP 协商（阻塞，taskpool worker）
+ *  blockUntrusted=true（默认）→ 校验证书，失败即拒绝；false → 接受任意证书 */
 @Concurrent
 function ocAuth(url: string, user: string, pass: string, group: string,
-                platform: string, deviceType: string, uniqueId: string): number {
+                platform: string, deviceType: string, uniqueId: string,
+                blockUntrusted: boolean): number {
+  OpenConnect.setTrustUntrustedServer(blockUntrusted);
   OpenConnect.newSession();
   const prc = OpenConnect.parseUrl(url);
   if (prc !== 0) {
@@ -149,9 +159,11 @@ function ocAuth(url: string, user: string, pass: string, group: string,
 
 /** 阶段 C：注入 fd 并运行数据面 mainloop（阻塞，taskpool worker） */
 @Concurrent
-function ocTunnelRun(fd: number): number {
+function ocTunnelRun(fd: number, enableDtls: boolean): number {
   OpenConnect.injectTunFd(fd);
-  OpenConnect.setupDtls();
+  if (enableDtls) {
+    OpenConnect.setupDtls();
+  }
   OpenConnect.mainloop();
   return 0;
 }
@@ -181,6 +193,10 @@ export default class VpnExtAbility extends VpnExtensionAbility {
     let pass = '';
     let group = '';
     let session = '';
+    // 本次连接的设置项（默认与 UI 一致的出厂值）
+    let blockUntrusted = '1';
+    let enableDtls = '0';
+    let debugMode = '0';
     const cfgPath = this.context.filesDir + '/oc_vpn_cfg.txt';
     try {
       const text = fileIo.readTextSync(cfgPath);
@@ -202,11 +218,24 @@ export default class VpnExtAbility extends VpnExtensionAbility {
           pass = value;
         } else if (key === 'authGroup') {
           group = value;
+        } else if (key === 'blockUntrusted') {
+          blockUntrusted = value;
+        } else if (key === 'enableDtls') {
+          enableDtls = value;
+        } else if (key === 'debugMode') {
+          debugMode = value;
         }
       }
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'read cfg failed: %{public}s', JSON.stringify(e));
     }
+    // 保存设置项（数据面阶段按此决定是否启用 DTLS）
+    gBlockUntrusted = (blockUntrusted === '1');
+    gEnableDtls = (enableDtls === '1');
+    gDebugMode = (debugMode === '1');
+    appendStatus('设置项: 证书校验=' + (gBlockUntrusted ? '开' : '关') +
+      ' DTLS=' + (gEnableDtls ? '开' : '关') +
+      ' 调试模式=' + (gDebugMode ? '开' : '关'), gStatusPath);
     // 回写会话令牌，供 UI 确认这是读取了本次配置的全新实例（防止复用旧实例导致地址不切换）
     if (session) {
       appendStatus('SESSION_START=' + session, gStatusPath);
@@ -246,7 +275,8 @@ export default class VpnExtAbility extends VpnExtensionAbility {
     appendStatus('设备信息: OS=' + platformVer + ', 型号=' + devModel, gStatusPath);
 
     // 阶段 A 与 B 并行启动
-    const authTask = new taskpool.Task(ocAuth, url, user, pass, group, platformVer, devModel, devUid);
+    const authTask = new taskpool.Task(ocAuth, url, user, pass, group, platformVer, devModel, devUid,
+      gBlockUntrusted);
     const authP: Promise<number> = taskpool.execute(authTask) as Promise<number>;
 
     this.run(authP);
@@ -262,6 +292,29 @@ export default class VpnExtAbility extends VpnExtensionAbility {
     }
 
     if (authCode !== 0) {
+      // 若证书校验被拒绝（严格模式开启时），读回 native 拒绝原因写状态文件，
+      // 供 UI 检测后按原因弹窗提醒（名称不匹配/已过期/来源不受信任等）。
+      try {
+        const cReject: string = OpenConnect.getCertRejectReason();
+        if (cReject && cReject.trim().length > 0) {
+          appendStatus('CERT_REJECT=' + cReject.trim(), gStatusPath);
+        }
+      } catch (e) {
+        // 读取失败不影响后续
+      }
+      // 追加 openconnect 本次认证的原始进度日志，供 UI 按真实报错分类弹窗
+      // （组错误/账号不存在等未列入 AUTH_ERR_TEXT 的码，其原始原因都在这份日志里）。
+      try {
+        const ocLog: string = OpenConnect.getProgressLog();
+        if (ocLog && ocLog.trim().length > 0) {
+          const lines = ocLog.trim().split('\n').filter((l) => l.trim().length > 0);
+          for (const ln of lines.slice(-12)) {
+            appendStatus('AUTHLOG=' + ln.trim(), gStatusPath);
+          }
+        }
+      } catch (e) {
+        // 读取失败不影响后续
+      }
       const reason: string | undefined = AUTH_ERR_TEXT.get(authCode);
       // 有对应中文提示则显示文字，否则回退显示原始错误码
       appendStatus(reason
@@ -294,9 +347,9 @@ export default class VpnExtAbility extends VpnExtensionAbility {
     }
 
     appendStatus('认证成功，取得 fd=' + fd + '，进入数据面...', gStatusPath);
-    // 阶段 C：注入 fd + 数据面 mainloop
+    // 阶段 C：注入 fd + 数据面 mainloop（按设置启用 / 跳过 DTLS）
     try {
-      const dataTask = new taskpool.Task(ocTunnelRun, fd);
+      const dataTask = new taskpool.Task(ocTunnelRun, fd, gEnableDtls);
       const dataP: Promise<number> = taskpool.execute(dataTask) as Promise<number>;
       gDataTask = dataP;
       // 数据面运行期间监听“用户主动断开”命令，优雅向服务器发送 BYE(logout)
@@ -313,7 +366,9 @@ export default class VpnExtAbility extends VpnExtensionAbility {
       const ocLog: string = OpenConnect.getProgressLog();
       if (ocLog && ocLog.trim().length > 0) {
         const lines = ocLog.trim().split('\n').filter((l) => l.trim().length > 0);
-        for (const ln of lines.slice(-15)) {
+        // 调试模式：尽量输出全量原始日志，供用户诊断；非调试模式仅保留末尾 15 行，避免刷屏
+        const shown = gDebugMode ? lines : lines.slice(-15);
+        for (const ln of shown) {
           appendStatus('[oc] ' + ln, gStatusPath);
         }
       }
