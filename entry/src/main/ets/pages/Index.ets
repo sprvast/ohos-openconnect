@@ -53,7 +53,7 @@ struct AboutDialog {
           Divider().color($r('app.color.divider_light')).strokeWidth(0.5)
 
           this.sectionTitle(this.res($r('app.string.about_apply_info')))
-          this.aboutRow(this.res($r('app.string.about_version')), '1.0.8')
+          this.aboutRow(this.res($r('app.string.about_version')), '1.0.9')
           this.aboutRow(this.res($r('app.string.about_based_on')), 'OpenConnect v9.21')
           this.aboutRow(this.res($r('app.string.about_backend')), 'OpenConnect / AnyConnect')
 
@@ -96,7 +96,7 @@ struct AboutDialog {
         .padding({ left: 16, right: 16 })
       }
       .width('100%')
-      .height('100%')
+      .constraintSize({ maxHeight: '90%' })
       .scrollBar(BarState.Auto)
       .align(Alignment.Top)
     }
