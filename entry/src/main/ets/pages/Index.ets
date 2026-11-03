@@ -15,7 +15,7 @@ import { VpnManager, IpInfo } from '../napi/VpnManager';
 import { vpnExtension } from '@kit.NetworkKit';
 import { connection as netConnection } from '@kit.NetworkKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { common } from '@kit.AbilityKit';
+import { common, autoFillManager } from '@kit.AbilityKit';
 import type Want from '@ohos.app.ability.Want';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { fileIo } from '@kit.CoreFileKit';
@@ -257,6 +257,7 @@ struct AddServerDialog {
         .width('100%')
         .height(44)
         .fontSize(14)
+        .enableKeyboardOnFocus(false)
         .onChange((v: string) => this.input = v)
         .onSubmit(() => {
           this.onConfirm?.(this.input);
@@ -529,9 +530,6 @@ function pushServerHistory(history: string[], addr: string, max: number): string
 struct Index {
   @State serverUrl: string = '';
   @State serverHistory: string[] = [];
-  /** 是否正在输入新的服务器地址（下拉里选"+新增"时展开） */
-  @State addingServer: boolean = false;
-  @State newServerInput: string = '';
   @State username: string = '';
   @State password: string = '';
   @State authGroup: string = '';
@@ -747,10 +745,16 @@ struct Index {
     this.addCtrl.open();
   }
 
-  /** 弹窗确认新增：去空、去重、置顶保存并持久化，回填并拉取用户组 */
+  /** 弹窗确认新增：强制校验 https:// 前缀，然后去空、去重、置顶保存并持久化，回填并拉取用户组 */
   private addServerConfirmed(addrRaw: string): void {
     const addr = addrRaw.trim();
     if (!addr) {
+      return;
+    }
+    // 强制校验服务器地址必须以 https:// 开头，否则弹窗提示并阻止保存
+    if (!addr.toLowerCase().startsWith('https://')) {
+      this.appendLog('服务器地址必须以 https:// 开头');
+      this.showUrlSchemeDialog();
       return;
     }
     const next = pushServerHistory(this.serverHistory, addr, 10);
@@ -1029,6 +1033,16 @@ struct Index {
             this.checkBanner(content);
             // 连接成功后记住服务器地址/用户名/用户组/密码，供下次自动回填
             this.saveLogin();
+            // 主动触发密码保险箱自动保存：让系统弹「是否保存」并写入账号密码，
+            // 之后再次打开本应用登录时即可自动填充（需系统开启密码保险箱「自动填充和保存」）。
+            try {
+              autoFillManager.requestAutoSave(this.getUIContext(), {
+                onSuccess: () => this.appendLog('已触发密码保险箱保存账号密码'),
+                onFailure: () => this.appendLog('密码保险箱保存被取消或失败（不影响连接）')
+              });
+            } catch (e) {
+              this.appendLog('触发密码保险箱保存异常: ' + (e as Error).message);
+            }
           } else if (content.includes('数据面主循环结束') || content.includes('VPN 已关闭')) {
             this.isConnected = false;
             this.statusText = '未连接';
@@ -1145,7 +1159,7 @@ struct Index {
     }
     // 服务器明确返回“账号或密码错误”（含 AnyLink 中文报错）
     if (/用户名或密码错误|账号或密码|login.*(fail|incorrect|error|invalid)|invalid.*(username|password|credential)|authentication failed|bad.*credential/i.test(content)) {
-      return '登录失败：账号或密码错误，请核对用户名与密码后重试（服务器返回“用户名或密码错误”）';
+      return '登录失败：请检查用户名、密码、用户组是否正确';
     }
     if (/incorrect.*password|wrong.*password|invalid.*password|password.*(incorrect|invalid|mismatch)/i.test(content)) {
       return '登录失败：账号或密码错误，请检查后重试';
@@ -1344,34 +1358,6 @@ struct Index {
   private useServerHistory(addr: string): void {
     this.serverUrl = addr;
     this.appendLog('使用历史服务器：' + addr);
-    this.fetchServerGroups();
-  }
-
-  /** 新增地址确定：加入历史并回填、拉取用户组 */
-  private async confirmNewServer(): Promise<void> {
-    const addr = this.newServerInput.trim();
-    // 强制校验服务器地址必须以 https:// 开头
-    if (!addr) {
-      this.addingServer = false;
-      return;
-    }
-    if (!addr.toLowerCase().startsWith('https://')) {
-      this.appendLog('服务器地址必须以 https:// 开头');
-      this.showUrlSchemeDialog();
-      return;
-    }
-    const next = pushServerHistory(this.serverHistory, addr, 10);
-    this.serverHistory = next;
-    this.serverUrl = addr;
-    try {
-      const context = this.getUIContext().getHostContext() as common.Context;
-      await prefPutList(context, 'serverHistory', next);
-    } catch (e) {
-      // 忽略
-    }
-    this.newServerInput = '';
-    this.addingServer = false;
-    this.appendLog('已新增服务器地址：' + addr);
     this.fetchServerGroups();
   }
 
@@ -1575,6 +1561,7 @@ struct Index {
       TextInput({ placeholder: $r('app.string.username'), text: this.username })
         .type(InputType.USER_NAME)
         .enableAutoFill(true)
+        .enableKeyboardOnFocus(false)
         .fontSize(15)
         .maxLength(256)
         .height(48)
@@ -1584,6 +1571,7 @@ struct Index {
       TextInput({ placeholder: $r('app.string.password'), text: this.password })
         .type(InputType.Password)
         .enableAutoFill(true)
+        .enableKeyboardOnFocus(false)
         .fontSize(15)
         .maxLength(256)
         .height(48)
